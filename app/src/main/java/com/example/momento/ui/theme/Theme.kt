@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -18,19 +19,59 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    // Primary
+    primary = Terracotta,
     onPrimary = Color.White,
+    primaryContainer = TerracottaContainer,
+    onPrimaryContainer = WarmBark,
+
+    // Secondary
+    secondary = SageGreen,
     onSecondary = Color.White,
+    secondaryContainer = SageContainer,
+    onSecondaryContainer = OnSageContainer,
+
+    // Tertiary
+    tertiary = SoftGold,
     onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    tertiaryContainer = GoldContainer,
+    onTertiaryContainer = OnGoldContainer,
+
+    // Background
+    background = WarmSand,
+    onBackground = WarmBark,
+
+    // Surface
+    surface = WarmSand,
+    onSurface = WarmBark,
+    onSurfaceVariant = MutedBark,
+
+    surfaceBright = SurfaceLowest,
+    surfaceDim = SurfaceHigh,
+
+    surfaceContainerLowest = SurfaceLowest,
+    surfaceContainerLow = SurfaceLow,
+    surfaceContainer = SurfaceContainer,
+    surfaceContainerHigh = SurfaceHigh,
+    surfaceContainerHighest = SurfaceHighest,
+
+    // Outline
+    outline = WarmOutline,
+    outlineVariant = WarmOutlineVariant,
+
+    // Error
+    error = Error,
+    onError = Color.White,
+    errorContainer = ErrorContainer,
+    onErrorContainer = OnErrorContainer,
+
+    // Inverse
+    inverseSurface = WarmBark,
+    inverseOnSurface = WarmSand,
+
+    // Misc
+    surfaceTint = Terracotta,
+    scrim = WarmBark,
 )
 
 @Composable
@@ -53,6 +94,7 @@ fun MomentoTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = MomentShapes,
         content = content
     )
 }
