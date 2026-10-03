@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="login_title">Màn hình Đăng nhập</string>
+    <string name="otp_title">Màn hình OTP</string>
+    <string name="profile_title">Màn hình Hoàn tất hồ sơ</string>
+    <string name="back_to_login">Quay lại Login</string>
+    <string name="auth_pending_note">Chức năng xác thực đang chờ triển khai.</string>
+    <string name="moment_feed_title">Màn hình Moments (Feed)</string>
+    <string name="moment_feed_placeholder_note">Màn hình tạm của feature Moment trong Main; chưa có session gate hay các tab Moments, Camera, Journal.</string>
+</resources>
