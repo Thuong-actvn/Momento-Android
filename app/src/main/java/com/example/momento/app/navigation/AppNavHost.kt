@@ -9,7 +9,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.example.momento.feature.auth.navigation.AuthGraph
 import com.example.momento.feature.auth.navigation.CompleteProfile
-import com.example.momento.feature.auth.navigation.Otp
 import com.example.momento.feature.auth.navigation.authGraph
 import com.example.momento.feature.moment.navigation.MomentFeed
 import com.example.momento.feature.moment.presentation.feed.MomentFeedScreen
@@ -29,7 +28,6 @@ fun AppNavHost(
         modifier = modifier,
     ) {
         authGraph(
-            onOtpSent = { navController.navigate(Otp) { launchSingleTop = true } },
             onProfileRequired = {
                 navController.navigate(CompleteProfile) {
                     // Keep AuthGraph, but remove Login/OTP from its stack.

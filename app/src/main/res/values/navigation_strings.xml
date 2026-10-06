@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="login_title">Màn hình Đăng nhập</string>
+    <string name="login_title">Đăng nhập</string>
+    <string name="sign_in_with_google">Đăng nhập với Google</string>
+    <string name="phone_number_label">Số điện thoại (+84...)</string>
+    <string name="send_otp">Gửi mã OTP</string>
+    <string name="otp_code_label">Mã OTP</string>
+    <string name="verify_otp">Xác nhận OTP</string>
+    <string name="backend_user_label">Tài khoản backend</string>
+    <string name="backend_username">Username: %1$s</string>
+    <string name="backend_user_id">ID: %1$s</string>
+    <string name="profile_completed">Hồ sơ đã hoàn tất</string>
+    <string name="profile_incomplete">Hồ sơ cần hoàn thiện</string>
+    <string name="continue_after_login">Tiếp tục</string>
+    <string name="sign_out">Đăng xuất</string>
     <string name="otp_title">Màn hình OTP</string>
     <string name="profile_title">Màn hình Hoàn tất hồ sơ</string>
     <string name="back_to_login">Quay lại Login</string>

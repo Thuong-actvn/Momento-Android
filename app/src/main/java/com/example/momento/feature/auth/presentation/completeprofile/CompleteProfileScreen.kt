@@ -1,4 +1,4 @@
-package com.example.momento.feature.auth.presentation
+package com.example.momento.feature.auth.presentation.completeprofile
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,16 +14,12 @@ import androidx.compose.ui.unit.dp
 import com.example.momento.R
 
 @Composable
-fun LoginScreen(
-    onOtpSent: () -> Unit,
-    onProfileRequired: () -> Unit,
-    onAuthSuccess: () -> Unit,
-) {
+fun CompleteProfileScreen(onProfileCompleted: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
     ) {
-        Text(stringResource(R.string.login_title), style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.profile_title), style = MaterialTheme.typography.headlineMedium)
         Text(stringResource(R.string.auth_pending_note))
     }
 }

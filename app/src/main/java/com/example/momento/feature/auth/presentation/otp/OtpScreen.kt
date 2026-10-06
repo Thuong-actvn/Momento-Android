@@ -1,4 +1,4 @@
-package com.example.momento.feature.auth.presentation
+package com.example.momento.feature.auth.presentation.otp
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
