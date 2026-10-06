@@ -1,4 +1,4 @@
-package com.example.momento.feature.auth.data
+package com.example.momento.core.common
 
 import kotlinx.coroutines.CancellationException
 

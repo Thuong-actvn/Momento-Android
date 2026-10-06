@@ -2,7 +2,7 @@ package com.example.momento.feature.auth.data.firebase
 
 import android.app.Activity
 import android.telephony.PhoneNumberUtils
-import com.example.momento.feature.auth.data.suspendRunCatching
+import com.example.momento.core.common.suspendRunCatching
 import com.example.momento.feature.auth.domain.model.AuthProvider
 import com.example.momento.feature.auth.domain.model.AuthUser
 import com.example.momento.feature.auth.domain.repository.AuthRepository

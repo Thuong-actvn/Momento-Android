@@ -5,7 +5,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import com.example.momento.R
-import com.example.momento.feature.auth.data.suspendRunCatching
+import com.example.momento.core.common.suspendRunCatching
 import com.example.momento.feature.auth.domain.model.AuthProvider
 import com.example.momento.feature.auth.domain.model.AuthUser
 import com.example.momento.feature.auth.domain.repository.AuthRepository

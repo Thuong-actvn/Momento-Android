@@ -1,6 +1,6 @@
 package com.example.momento.feature.auth.data.repository
 
-import com.example.momento.feature.auth.data.suspendRunCatching
+import com.example.momento.core.common.suspendRunCatching
 import com.example.momento.feature.auth.data.mapper.toDomain
 import com.example.momento.feature.auth.data.remote.AuthApi
 import com.example.momento.feature.auth.data.remote.dto.DisplayNameRequest
