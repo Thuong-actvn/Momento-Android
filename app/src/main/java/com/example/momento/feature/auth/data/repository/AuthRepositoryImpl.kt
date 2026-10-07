@@ -3,9 +3,8 @@ package com.example.momento.feature.auth.data.repository
 import com.example.momento.core.common.suspendRunCatching
 import com.example.momento.feature.auth.data.mapper.toDomain
 import com.example.momento.feature.auth.data.remote.AuthApi
-import com.example.momento.feature.auth.data.remote.dto.DisplayNameRequest
+import com.example.momento.feature.auth.data.remote.dto.CompleteProfileRequest
 import com.example.momento.feature.auth.data.remote.dto.LoginRequest
-import com.example.momento.feature.auth.data.remote.dto.UsernameRequest
 import com.example.momento.feature.auth.domain.model.AuthProvider
 import com.example.momento.feature.auth.domain.model.AuthUser
 import com.example.momento.feature.auth.domain.repository.AuthRepository
@@ -51,12 +50,11 @@ class AuthRepositoryImpl @Inject constructor(
         val name = displayName.trim()
         val handle = username.trim().lowercase(Locale.ROOT)
         require(name.isNotEmpty()) { "Display name is required" }
+        require(name.length <= 50) { "Display name must not exceed 50 characters" }
         require(handle.matches(Regex("^[a-z0-9_]{3,20}$"))) {
             "Username must contain 3-20 lowercase letters, digits or underscores"
         }
-        // The backend marks the profile complete when the username is saved.
-        api.displayName(DisplayNameRequest(name)).requireData()
-        api.username(UsernameRequest(handle)).requireData()
+        api.completeProfile(CompleteProfileRequest(name, handle)).requireData()
             .toDomain().also { _currentUser.value = it }
     }
 

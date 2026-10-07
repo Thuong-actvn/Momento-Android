@@ -10,7 +10,21 @@ data class UserDto(
     val avatarUrl: String? = null,
     val email: String? = null,
     val phoneNumber: String? = null,
-    val isProfileCompleted: Boolean = false,
+    val authProvider: String? = null,
+    val birthday: String? = null,
+)
+
+@Serializable
+data class ProfileDto(
+    val id: String,
+    val username: String,
+    val isProfileCompleted: Boolean,
+    val displayName: String? = null,
+    val avatarUrl: String? = null,
+    val email: String? = null,
+    val phoneNumber: String? = null,
+    val birthday: String? = null,
+    val createdAt: String? = null,
 )
 
 @Serializable
@@ -25,5 +39,8 @@ data class LoginResponse(
     val isProfileIncomplete: Boolean,
 )
 
-@Serializable data class DisplayNameRequest(val displayName: String)
-@Serializable data class UsernameRequest(val username: String)
+@Serializable
+data class CompleteProfileRequest(
+    val displayName: String,
+    val username: String,
+)
