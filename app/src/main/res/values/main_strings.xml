@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="main_tab_moments">Moments</string>
+    <string name="main_tab_camera">Máy ảnh</string>
+    <string name="main_tab_journal">Journal</string>
+    <string name="main_feed_placeholder">Màn hình Feed</string>
+    <string name="main_camera_placeholder">Màn hình Camera</string>
+    <string name="main_journal_placeholder">Màn hình Journal</string>
+</resources>

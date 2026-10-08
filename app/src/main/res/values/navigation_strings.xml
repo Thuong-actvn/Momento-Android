@@ -17,6 +17,4 @@
     <string name="verify_otp">Xác nhận OTP</string>
     <string name="continue_after_login">Tiếp tục</string>
     <string name="profile_title">Màn hình Hoàn tất hồ sơ</string>
-    <string name="moment_feed_title">Màn hình Moments (Feed)</string>
-    <string name="moment_feed_placeholder_note">Màn hình tạm của feature Moment trong Main; chưa có session gate hay các tab Moments, Camera, Journal.</string>
 </resources>
