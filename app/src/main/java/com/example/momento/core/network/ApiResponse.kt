@@ -9,7 +9,9 @@ data class ApiResponse<T>(
     val error: ApiError? = null,
 ) {
     fun requireData(): T {
-        check(success) { error?.message ?: "Backend request failed" }
+        if (!success) {
+            throw ApiException(error?.code, error?.message ?: "Backend request failed")
+        }
         return checkNotNull(data) { "Backend response has no data" }
     }
 }
