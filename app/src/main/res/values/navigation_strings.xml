@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="login_title">Đăng nhập</string>
-    <string name="sign_in_with_google">Đăng nhập với Google</string>
-    <string name="phone_number_label">Số điện thoại (+84...)</string>
-    <string name="send_otp">Gửi mã OTP</string>
+    <string name="sign_in_with_google">Tiếp tục bằng tài khoản Google</string>
+    <string name="phone_number_label">Số điện thoại</string>
+    <string name="login_tagline">Gửi khoảnh khắc ấm áp trực tiếp đến màn hình chính của những người thân yêu nhất.</string>
+    <string name="login_country_code">+84</string>
+    <string name="login_phone_placeholder">0988 123 456</string>
+    <string name="login_or">HOẶC</string>
+    <string name="login_otp_hint">Nhập mã OTP gồm 6 chữ số được gửi đến số điện thoại của bạn.</string>
+    <string name="login_resend_otp">Gửi lại mã</string>
+    <string name="login_legal_prefix">"Bằng cách tiếp tục, bạn đồng ý với "</string>
+    <string name="login_terms">Điều khoản</string>
+    <string name="login_legal_and">" và "</string>
+    <string name="login_privacy_policy">Chính sách quyền riêng tư</string>
+    <string name="login_legal_suffix">" của %1$s."</string>
     <string name="otp_code_label">Mã OTP</string>
     <string name="verify_otp">Xác nhận OTP</string>
-    <string name="backend_user_label">Tài khoản backend</string>
-    <string name="backend_username">Username: %1$s</string>
-    <string name="backend_user_id">ID: %1$s</string>
-    <string name="profile_completed">Hồ sơ đã hoàn tất</string>
-    <string name="profile_incomplete">Hồ sơ cần hoàn thiện</string>
     <string name="continue_after_login">Tiếp tục</string>
-    <string name="sign_out">Đăng xuất</string>
     <string name="otp_title">Màn hình OTP</string>
     <string name="profile_title">Màn hình Hoàn tất hồ sơ</string>
     <string name="back_to_login">Quay lại Login</string>

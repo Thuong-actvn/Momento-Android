@@ -6,20 +6,20 @@ val Purple80 = Color(0xFFD0BCFF)
 val PurpleGrey80 = Color(0xFFCCC2DC)
 val Pink80 = Color(0xFFEFB8C8)
 
-val Terracotta = Color(0xFFE06D53)
+val Terracotta = Color(0xFF9E3C26)
 val SageGreen = Color(0xFF4E7C5D)
 val SoftGold = Color(0xFFD99B3B)
 
-val WarmSand = Color(0xFFF9F5F0)
+val WarmSand = Color(0xFFFDF9F4)
 
 val SurfaceLowest = Color(0xFFFFFFFF)
-val SurfaceLow = Color(0xFFF3ECE3)
+val SurfaceLow = Color(0xFFF7F3EE)
 val SurfaceContainer = Color(0xFFEFE6DC)
 val SurfaceHigh = Color(0xFFE8DDD1)
 val SurfaceHighest = Color(0xFFE0D2C3)
 
-val WarmBark = Color(0xFF2C2623)
-val MutedBark = Color(0xFF6B605A)
+val WarmBark = Color(0xFF1C1C19)
+val MutedBark = Color(0xFF57423D)
 
 val WarmOutline = Color(0xFFDDD0C2)
 val WarmOutlineVariant = Color(0xFFEFE5DA)

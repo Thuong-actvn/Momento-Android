@@ -22,6 +22,12 @@ class PhoneSignIn @Inject constructor(
     private val repository: AuthRepository,
 ) {
     private var verificationId: String? = null
+    private var verificationRequestId = 0L
+
+    fun resetVerification() {
+        verificationRequestId++
+        verificationId = null
+    }
 
     fun sendCode(
         activity: Activity,
@@ -30,7 +36,8 @@ class PhoneSignIn @Inject constructor(
         onAutoVerified: (PhoneAuthCredential) -> Unit,
         onError: (Exception) -> Unit,
     ) {
-        verificationId = null
+        resetVerification()
+        val requestId = verificationRequestId
         try {
             val formattedPhone = requireNotNull(
                 PhoneNumberUtils.formatNumberToE164(phoneNumber.trim(), "VN")
@@ -39,15 +46,18 @@ class PhoneSignIn @Inject constructor(
             }
             val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
                 override fun onCodeSent(id: String, token: PhoneAuthProvider.ForceResendingToken) {
+                    if (requestId != verificationRequestId) return
                     verificationId = id
                     onCodeSent()
                 }
 
                 override fun onVerificationCompleted(credential: PhoneAuthCredential) {
+                    if (requestId != verificationRequestId) return
                     onAutoVerified(credential)
                 }
 
                 override fun onVerificationFailed(error: FirebaseException) {
+                    if (requestId != verificationRequestId) return
                     onError(error)
                 }
             }
