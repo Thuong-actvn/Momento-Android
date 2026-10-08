@@ -62,6 +62,8 @@ enum class MainTab {
 fun MainScreen(
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
+    avatarUrl: String? = null,
+    onAvatarClick: (() -> Unit)? = null,
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.FEED) }
 
@@ -77,6 +79,8 @@ fun MainScreen(
         selectedTab = selectedTab,
         onTabSelected = { selectedTab = it },
         modifier = modifier,
+        avatarUrl = avatarUrl,
+        onAvatarClick = onAvatarClick,
     )
 }
 
@@ -85,6 +89,8 @@ fun MainScreenContent(
     selectedTab: MainTab,
     onTabSelected: (MainTab) -> Unit,
     modifier: Modifier = Modifier,
+    avatarUrl: String? = null,
+    onAvatarClick: (() -> Unit)? = null,
 ) {
     Scaffold(
         modifier = modifier,
@@ -104,7 +110,11 @@ fun MainScreenContent(
                 .consumeWindowInsets(innerPadding),
         ) {
             when (selectedTab) {
-                MainTab.FEED -> FeedScreen(modifier = Modifier.fillMaxSize())
+                MainTab.FEED -> FeedScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    avatarUrl = avatarUrl,
+                    onAvatarClick = onAvatarClick,
+                )
                 MainTab.CAMERA -> CameraPlaceholder(modifier = Modifier.fillMaxSize())
                 MainTab.JOURNAL -> JournalPlaceholder(modifier = Modifier.fillMaxSize())
             }
@@ -278,7 +288,7 @@ private fun TabPlaceholder(title: String, modifier: Modifier = Modifier) {
     }
 }
 
-@Preview()
+@Preview(showSystemUi = true)
 @Composable
 private fun MainFeedPreview() {
     val activity = LocalActivity.current

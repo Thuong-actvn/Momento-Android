@@ -1,0 +1,5 @@
+<resources>
+    <string name="feed_avatar_description">Ảnh đại diện</string>
+    <string name="feed_open_profile">Xem hồ sơ</string>
+    <string name="feed_messages">Tin nhắn</string>
+</resources>
