@@ -10,7 +10,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navigation
-import com.example.momento.app.main.MainScreen
+import com.example.momento.app.main.MainRoute
 import com.example.momento.feature.auth.navigation.AuthGraph
 import com.example.momento.feature.auth.navigation.CompleteProfile
 import com.example.momento.feature.auth.navigation.authGraph
@@ -48,7 +48,7 @@ fun AppNavHost(
         )
         navigation<MainGraph>(startDestination = MainTabs) {
             composable<MainTabs> {
-                MainScreen(onExit = onExit)
+                MainRoute(onExit = onExit)
             }
         }
     }
