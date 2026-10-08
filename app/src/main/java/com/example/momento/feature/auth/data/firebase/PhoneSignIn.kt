@@ -3,8 +3,8 @@ package com.example.momento.feature.auth.data.firebase
 import android.app.Activity
 import android.telephony.PhoneNumberUtils
 import com.example.momento.core.common.suspendRunCatching
-import com.example.momento.feature.auth.domain.model.AuthProvider
-import com.example.momento.feature.auth.domain.model.AuthUser
+import com.example.momento.feature.auth.domain.repository.AuthProvider
+import com.example.momento.core.user.domain.model.CurrentUser
 import com.example.momento.feature.auth.domain.repository.AuthRepository
 import com.google.firebase.FirebaseException
 import com.google.firebase.auth.FirebaseAuth
@@ -73,14 +73,14 @@ class PhoneSignIn @Inject constructor(
         }
     }
 
-    suspend fun verifyCode(code: String): Result<AuthUser> = suspendRunCatching {
+    suspend fun verifyCode(code: String): Result<CurrentUser> = suspendRunCatching {
         val id = checkNotNull(verificationId) { "Send an OTP first" }
         require(code.matches(Regex("^[0-9]{6}$"))) { "OTP must contain 6 digits" }
         signInWithCredential(PhoneAuthProvider.getCredential(id, code)).getOrThrow()
     }
 
     /** Also used when Firebase verifies the phone automatically. */
-    suspend fun signInWithCredential(credential: PhoneAuthCredential): Result<AuthUser> = suspendRunCatching {
+    suspend fun signInWithCredential(credential: PhoneAuthCredential): Result<CurrentUser> = suspendRunCatching {
         firebase.get().signInWithCredential(credential).await()
         repository.syncUser(AuthProvider.PHONE).getOrThrow()
     }

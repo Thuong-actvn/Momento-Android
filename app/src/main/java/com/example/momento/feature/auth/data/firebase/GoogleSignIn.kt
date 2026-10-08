@@ -6,8 +6,8 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import com.example.momento.R
 import com.example.momento.core.common.suspendRunCatching
-import com.example.momento.feature.auth.domain.model.AuthProvider
-import com.example.momento.feature.auth.domain.model.AuthUser
+import com.example.momento.feature.auth.domain.repository.AuthProvider
+import com.example.momento.core.user.domain.model.CurrentUser
 import com.example.momento.feature.auth.domain.repository.AuthRepository
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -21,7 +21,7 @@ class GoogleSignIn @Inject constructor(
     private val firebase: Lazy<FirebaseAuth>,
     private val repository: AuthRepository,
 ) {
-    suspend fun signIn(activity: Activity): Result<AuthUser> = suspendRunCatching {
+    suspend fun signIn(activity: Activity): Result<CurrentUser> = suspendRunCatching {
         val clientId = activity.getString(R.string.default_web_client_id)
         val option = GetSignInWithGoogleOption.Builder(clientId).build()
         val request = GetCredentialRequest.Builder().addCredentialOption(option).build()

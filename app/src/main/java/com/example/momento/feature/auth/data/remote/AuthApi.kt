@@ -2,10 +2,10 @@ package com.example.momento.feature.auth.data.remote
 
 import com.example.momento.core.network.ApiResponse
 import com.example.momento.core.network.NoAuth
+import com.example.momento.core.user.data.remote.dto.ProfileDto
 import com.example.momento.feature.auth.data.remote.dto.CompleteProfileRequest
 import com.example.momento.feature.auth.data.remote.dto.LoginRequest
 import com.example.momento.feature.auth.data.remote.dto.LoginResponse
-import com.example.momento.feature.auth.data.remote.dto.ProfileDto
 import com.example.momento.feature.auth.data.remote.dto.UsernameAvailabilityDto
 import retrofit2.http.Body
 import retrofit2.http.GET

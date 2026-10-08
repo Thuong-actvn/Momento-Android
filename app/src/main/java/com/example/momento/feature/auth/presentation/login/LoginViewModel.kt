@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.momento.feature.auth.data.firebase.GoogleSignIn
 import com.example.momento.feature.auth.data.firebase.PhoneSignIn
-import com.example.momento.feature.auth.domain.model.AuthUser
+import com.example.momento.core.user.domain.model.CurrentUser
 import com.example.momento.feature.auth.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -19,7 +19,7 @@ data class LoginUiState(
     val isBusy: Boolean = true,
     val otpRequested: Boolean = false,
     val codeSent: Boolean = false,
-    val user: AuthUser? = null,
+    val user: CurrentUser? = null,
     val message: String = "Đang kiểm tra phiên đăng nhập...",
     val isError: Boolean = false,
     val phoneNumber: String = "",
@@ -178,7 +178,7 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    private fun showSignInResult(result: Result<AuthUser>) {
+    private fun showSignInResult(result: Result<CurrentUser>) {
         result.fold(
             onSuccess = { user ->
                 _state.update {
