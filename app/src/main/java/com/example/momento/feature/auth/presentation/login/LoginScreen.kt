@@ -30,7 +30,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -68,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.momento.R
+import com.example.momento.ui.components.MomentoButton
 import com.example.momento.ui.theme.MomentoTheme
 
 @Composable
@@ -183,31 +183,15 @@ private fun LoginActions(
     val colors = MaterialTheme.colorScheme
 
     Column(modifier = Modifier.padding(top = 16.dp)) {
-        Button(
+        MomentoButton(
+            text = stringResource(
+                if (state.isOtpStep) R.string.verify_otp else R.string.continue_after_login,
+            ),
             onClick = onPrimaryAction,
             enabled = state.primaryActionEnabled && canUseActivity,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            shape = CircleShape,
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp),
-        ) {
-            if (state.isPrimaryActionLoading) {
-                LoginProgressIndicator()
-            } else {
-                Text(
-                    text = stringResource(
-                        if (state.isOtpStep) R.string.verify_otp else R.string.continue_after_login,
-                    ),
-                    style = MaterialTheme.typography.labelLarge,
-                )
-                Spacer(Modifier.width(8.dp))
-                Icon(
-                    painter = painterResource(R.drawable.ic_auth_arrow_forward),
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        }
+            isLoading = state.isPrimaryActionLoading,
+            trailingIcon = R.drawable.ic_auth_arrow_forward,
+        )
 
         Spacer(Modifier.height(12.dp))
         Row(
@@ -251,7 +235,7 @@ private fun LoginActions(
                 Text(
                     text = stringResource(R.string.sign_in_with_google),
                     modifier = Modifier.weight(1f, fill = false),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center,
                 )
@@ -287,7 +271,7 @@ private fun LoginBrandHeader() {
         Spacer(Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.login_tagline),
-            style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 23.sp),
+            style = MaterialTheme.typography.bodyMedium,
             color = colors.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
