@@ -14,7 +14,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MomentoTheme {
+            MomentoTheme(dynamicColor = false) {
                 MomentoApp(onExit = ::finish)
             }
         }

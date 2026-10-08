@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="complete_profile_title">Thiết lập tài khoản</string>
+    <string name="complete_profile_heading">Tên &amp; Username</string>
+    <string name="complete_profile_description">Nhập thông tin cơ bản để bạn bè dễ dàng nhận ra bạn.</string>
+    <string name="complete_profile_display_name">Tên hiển thị</string>
+    <string name="complete_profile_display_name_placeholder">Minh Anh</string>
+    <string name="complete_profile_username">Username</string>
+    <string name="complete_profile_username_placeholder">minhanh</string>
+    <string name="complete_profile_username_available">Khả dụng</string>
+    <string name="complete_profile_username_unavailable">Không khả dụng</string>
+    <string name="complete_profile_username_format">Username gồm 3–20 chữ cái thường, chữ số hoặc dấu gạch dưới.</string>
+    <string name="complete_profile_finish">Hoàn tất</string>
+    <string name="complete_profile_back">Quay lại</string>
+</resources>

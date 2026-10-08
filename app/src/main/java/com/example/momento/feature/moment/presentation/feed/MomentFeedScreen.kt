@@ -1,9 +1,11 @@
 package com.example.momento.feature.moment.presentation.feed
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,7 +17,11 @@ import com.example.momento.R
 @Composable
 fun MomentFeedScreen() {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .safeDrawingPadding()
+            .padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
         Text(stringResource(R.string.moment_feed_title), style = MaterialTheme.typography.headlineMedium)

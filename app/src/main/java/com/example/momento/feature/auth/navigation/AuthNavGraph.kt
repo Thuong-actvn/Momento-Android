@@ -5,7 +5,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.example.momento.feature.auth.presentation.completeprofile.CompleteProfileScreen
 import com.example.momento.feature.auth.presentation.login.LoginScreen
-import com.example.momento.feature.auth.presentation.otp.OtpScreen
 
 fun NavGraphBuilder.authGraph(
     onProfileRequired: () -> Unit,
@@ -19,15 +18,11 @@ fun NavGraphBuilder.authGraph(
                 onAuthSuccess = onAuthSuccess,
             )
         }
-        composable<Otp> {
-            OtpScreen(
-                onBack = onBack,
-                onProfileRequired = onProfileRequired,
-                onAuthSuccess = onAuthSuccess,
-            )
-        }
         composable<CompleteProfile> {
-            CompleteProfileScreen(onProfileCompleted = onAuthSuccess)
+            CompleteProfileScreen(
+                onProfileCompleted = onAuthSuccess,
+                onBack = onBack,
+            )
         }
     }
 }

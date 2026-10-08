@@ -30,7 +30,7 @@ fun AppNavHost(
         authGraph(
             onProfileRequired = {
                 navController.navigate(CompleteProfile) {
-                    // Keep AuthGraph, but remove Login/OTP from its stack.
+                    // Keep AuthGraph, but remove Login from its stack.
                     popUpTo(AuthGraph) { inclusive = false }
                     launchSingleTop = true
                 }
@@ -49,6 +49,6 @@ fun AppNavHost(
             }
         }
     }
-    // With no previous screen, exit the Activity; OTP pops back to Login.
+    // With no previous screen, exit the Activity.
     BackHandler(onBack = onBack)
 }

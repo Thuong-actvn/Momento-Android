@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="12dp"
+    android:height="12dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Placeholder: replace with the Figma export. -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#3F6C4E"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M21,12A9,9 0,1 0,3 12A9,9 0,1 0,21 12M7,12L10,15L17,8" />
+</vector>
