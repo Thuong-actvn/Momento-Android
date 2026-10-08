@@ -9,6 +9,7 @@
     <string name="complete_profile_username_placeholder">minhanh</string>
     <string name="complete_profile_username_available">Khả dụng</string>
     <string name="complete_profile_username_unavailable">Không khả dụng</string>
+    <string name="complete_profile_retry_check">Kiểm tra lại</string>
     <string name="complete_profile_username_format">Username gồm 3–20 chữ cái thường, chữ số hoặc dấu gạch dưới.</string>
     <string name="complete_profile_finish">Hoàn tất</string>
     <string name="complete_profile_back">Quay lại</string>

@@ -44,3 +44,9 @@ data class CompleteProfileRequest(
     val displayName: String,
     val username: String,
 )
+
+@Serializable
+data class UsernameAvailabilityDto(
+    val username: String,
+    val available: Boolean,
+)

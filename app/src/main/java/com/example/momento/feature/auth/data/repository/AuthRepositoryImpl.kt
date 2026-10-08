@@ -55,7 +55,14 @@ class AuthRepositoryImpl @Inject constructor(
             "Username must contain 3-20 lowercase letters, digits or underscores"
         }
         api.completeProfile(CompleteProfileRequest(name, handle)).requireData()
-            .toDomain().also { _currentUser.value = it }
+            .toDomain().also {
+                check(it.isProfileCompleted) { "Profile is not complete" }
+                _currentUser.value = it
+            }
+    }
+
+    override suspend fun checkUsernameAvailability(username: String): Result<Boolean> = suspendRunCatching {
+        api.checkUsernameAvailability(username).requireData().available
     }
 
     override suspend fun signOut(): Result<Unit> = suspendRunCatching {

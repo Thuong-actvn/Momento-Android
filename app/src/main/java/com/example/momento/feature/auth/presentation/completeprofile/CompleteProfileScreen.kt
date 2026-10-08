@@ -23,12 +23,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -45,42 +44,45 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.momento.R
 import com.example.momento.ui.components.MomentoButton
 import com.example.momento.ui.components.MomentoTextField
 import com.example.momento.ui.theme.MomentoTheme
-import java.util.Locale
-
-enum class UsernameAvailability { Unchecked, Available, Unavailable }
-
-private val UsernamePattern = Regex("^[a-z0-9_]{3,20}$")
 
 @Composable
 fun CompleteProfileScreen(
     onProfileCompleted: () -> Unit,
     onBack: () -> Unit = {},
+    viewModel: CompleteProfileViewModel = hiltViewModel(),
 ) {
-    var displayName by rememberSaveable { mutableStateOf("") }
-    var username by rememberSaveable { mutableStateOf("") }
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val keyboard = LocalSoftwareKeyboardController.current
 
+    LaunchedEffect(state.isCompleted) {
+        if (state.isCompleted) onProfileCompleted()
+    }
+
     CompleteProfileContent(
-        displayName = displayName,
-        username = username,
-        // A valid format does not establish uniqueness. Supply a checked status here
-        // when the backend exposes a username availability check.
-        usernameAvailability = UsernameAvailability.Unchecked,
-        onDisplayNameChange = { displayName = it.take(50) },
-        onUsernameChange = { username = it.lowercase(Locale.ROOT).take(20) },
+        displayName = state.displayName,
+        username = state.username,
+        usernameAvailability = state.usernameAvailability,
+        onDisplayNameChange = viewModel::onDisplayNameChange,
+        onUsernameChange = viewModel::onUsernameChange,
         onBack = onBack,
+        isSubmitting = state.isSubmitting,
+        error = state.error,
+        usernameCheckError = state.usernameCheckError,
+        onRetryUsernameCheck = viewModel::retryUsernameCheck,
         onComplete = {
             keyboard?.hide()
-            onProfileCompleted()
+            viewModel.completeProfile()
         },
     )
 }
 
-/** Stateless form, ready to receive username availability from the profile flow. */
+/** Stateless form used by the screen and previews. */
 @Composable
 fun CompleteProfileContent(
     displayName: String,
@@ -91,12 +93,16 @@ fun CompleteProfileContent(
     onBack: () -> Unit,
     onComplete: () -> Unit,
     modifier: Modifier = Modifier,
+    isSubmitting: Boolean = false,
+    error: String? = null,
+    usernameCheckError: String? = null,
+    onRetryUsernameCheck: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
     val focusManager = LocalFocusManager.current
     val usernameFormatInvalid = username.isNotEmpty() && !UsernamePattern.matches(username)
-    val canComplete = displayName.trim().isNotEmpty() && displayName.trim().length <= 50 &&
-        UsernamePattern.matches(username) && usernameAvailability != UsernameAvailability.Unavailable
+    val canComplete = CompleteProfileUiState(displayName = displayName, username = username,
+        usernameAvailability = usernameAvailability, isSubmitting = isSubmitting).canSubmit
     val complete = { if (canComplete) onComplete() }
 
     Column(
@@ -137,6 +143,7 @@ fun CompleteProfileContent(
                     onValueChange = onDisplayNameChange,
                     label = label,
                     placeholder = stringResource(R.string.complete_profile_display_name_placeholder),
+                    enabled = !isSubmitting,
                     prefix = {
                         Icon(
                             painter = painterResource(R.drawable.ic_profile_display_name),
@@ -164,7 +171,8 @@ fun CompleteProfileContent(
                 ) {
                     Text(text = label, color = colors.onSurface, style = MaterialTheme.typography.bodySmall)
                     if (!usernameFormatInvalid && username.isNotEmpty() &&
-                        usernameAvailability != UsernameAvailability.Unchecked
+                        (usernameAvailability == UsernameAvailability.Available ||
+                            usernameAvailability == UsernameAvailability.Unavailable)
                     ) {
                         UsernameAvailabilityBadge(usernameAvailability)
                     }
@@ -174,7 +182,8 @@ fun CompleteProfileContent(
                     onValueChange = onUsernameChange,
                     label = label,
                     placeholder = stringResource(R.string.complete_profile_username_placeholder),
-                    isError = usernameFormatInvalid,
+                    enabled = !isSubmitting,
+                    isError = usernameFormatInvalid || usernameAvailability == UsernameAvailability.Unavailable,
                     prefix = {
                         Icon(
                             painter = painterResource(R.drawable.ic_profile_username),
@@ -198,12 +207,25 @@ fun CompleteProfileContent(
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 }
+                if (usernameCheckError != null) {
+                    Text(text = usernameCheckError, color = colors.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                    TextButton(onClick = onRetryUsernameCheck, enabled = !isSubmitting) {
+                        Text(stringResource(R.string.complete_profile_retry_check))
+                    }
+                }
             }
 
+            if (error != null) {
+                Text(text = error, color = colors.error, style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            }
             MomentoButton(
                 text = stringResource(R.string.complete_profile_finish),
                 onClick = complete,
                 enabled = canComplete,
+                isLoading = isSubmitting,
                 modifier = Modifier.padding(top = 20.dp),
                 trailingIcon = R.drawable.ic_auth_arrow_forward,
             )
@@ -215,7 +237,7 @@ fun CompleteProfileContent(
 @Composable
 private fun CompleteProfileTopBar(onBack: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    Surface(color = colors.background, shadowElevation = 1.dp) {
+    Surface(color = colors.background) {
         CenterAlignedTopAppBar(
             title = {
                 Text(
@@ -290,7 +312,9 @@ private fun CompleteProfileUnavailablePreview() {
 @Composable
 private fun CompleteProfileEmptyPreview() {
     MomentoTheme(darkTheme = false, dynamicColor = false) {
-        CompleteProfileScreen(onProfileCompleted = {}, onBack = {})
+        CompleteProfileContent(displayName = "", username = "",
+            usernameAvailability = UsernameAvailability.Unchecked,
+            onDisplayNameChange = {}, onUsernameChange = {}, onBack = {}, onComplete = {})
     }
 }
 
