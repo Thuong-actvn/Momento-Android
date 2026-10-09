@@ -5,3 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable data object MainGraph
 
 @Serializable data object MainTabs
+
+@Serializable data object Profile
+
+@Serializable data object EditProfile
