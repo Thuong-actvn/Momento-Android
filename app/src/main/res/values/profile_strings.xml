@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="profile_screen_title">Profile</string>
+    <string name="profile_back">Quay lại</string>
+    <string name="profile_edit">Chỉnh sửa hồ sơ</string>
+    <string name="profile_loading">Đang tải hồ sơ…</string>
+    <string name="profile_username">\@%1$s</string>
+    <string name="profile_connections">Kết nối &amp; Lời mời</string>
+    <string name="profile_connections_description">Quản lý bạn bè, chia sẻ mã QR &amp; link mời</string>
+    <string name="profile_new_badge">Mới</string>
+    <string name="profile_widgets">Tiện ích Màn hình chính</string>
+    <string name="profile_notifications">Thông báo &amp; Âm thanh</string>
+    <string name="profile_privacy">Quyền riêng tư &amp; Bảo mật</string>
+    <string name="profile_storage">Bộ nhớ &amp; Dữ liệu</string>
+    <string name="profile_help">Trợ giúp &amp; Phản hồi</string>
+    <string name="profile_logout">Đăng xuất</string>
+    <string name="profile_logging_out">Đang đăng xuất…</string>
+    <string name="profile_app_version">%1$s v%2$s</string>
+    <string name="profile_load_error">Không thể tải lại hồ sơ. Vui lòng thử lại.</string>
+    <string name="profile_logout_error">Không thể đăng xuất. Vui lòng thử lại.</string>
+    <string name="profile_retry">Thử lại</string>
+    <string name="profile_edit_placeholder">Nội dung đang được cập nhật.</string>
+</resources>

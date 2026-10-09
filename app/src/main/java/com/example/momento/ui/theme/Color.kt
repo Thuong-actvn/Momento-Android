@@ -8,7 +8,7 @@ val Pink80 = Color(0xFFEFB8C8)
 
 val Terracotta = Color(0xFF9E3C26)
 val SageGreen = Color(0xFF4E7C5D)
-val SoftGold = Color(0xFFD99B3B)
+val SoftGold = Color(0xFF7F5300)
 
 val WarmSand = Color(0xFFFDF9F4)
 
