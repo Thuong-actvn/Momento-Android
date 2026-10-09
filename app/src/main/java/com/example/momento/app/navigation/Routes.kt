@@ -9,3 +9,5 @@ import kotlinx.serialization.Serializable
 @Serializable data object Profile
 
 @Serializable data object EditProfile
+
+@Serializable data object Friends

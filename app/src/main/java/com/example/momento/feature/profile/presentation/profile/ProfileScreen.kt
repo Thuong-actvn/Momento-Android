@@ -38,6 +38,7 @@ fun ProfileScreen(
     state: ProfileUiState,
     onBack: () -> Unit,
     onEditProfile: () -> Unit,
+    onConnectionsClick: () -> Unit,
     onSignOut: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -83,7 +84,7 @@ fun ProfileScreen(
                 )
             }
             Spacer(Modifier.height(16.dp))
-            ProfileConnectionsCard()
+            ProfileConnectionsCard(onClick = onConnectionsClick, enabled = canNavigate)
             Spacer(Modifier.height(12.dp))
             ProfileSettingsCard()
             Spacer(Modifier.height(20.dp))
@@ -129,6 +130,7 @@ private fun ProfilePreview() {
             state = ProfileUiState(),
             onBack = {},
             onEditProfile = {},
+            onConnectionsClick = {},
             onSignOut = {},
             onRetry = {},
         )

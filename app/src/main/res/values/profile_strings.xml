@@ -6,7 +6,7 @@
     <string name="profile_loading">Đang tải hồ sơ…</string>
     <string name="profile_username">\@%1$s</string>
     <string name="profile_connections">Kết nối &amp; Lời mời</string>
-    <string name="profile_connections_description">Quản lý bạn bè, chia sẻ mã QR &amp; link mời</string>
+    <string name="profile_connections_description">Quản lý bạn bè và lời mời kết bạn</string>
     <string name="profile_new_badge">Mới</string>
     <string name="profile_widgets">Tiện ích Màn hình chính</string>
     <string name="profile_notifications">Thông báo &amp; Âm thanh</string>

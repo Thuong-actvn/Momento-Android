@@ -12,6 +12,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun ProfileRoute(
     onBack: () -> Unit,
     onEditProfile: () -> Unit,
+    onConnectionsClick: () -> Unit,
     onSignedOut: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
@@ -31,6 +32,7 @@ fun ProfileRoute(
         state = state,
         onBack = onBack,
         onEditProfile = onEditProfile,
+        onConnectionsClick = onConnectionsClick,
         onSignOut = viewModel::signOut,
         onRetry = viewModel::refreshProfile,
         modifier = modifier,

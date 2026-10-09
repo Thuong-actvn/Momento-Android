@@ -102,7 +102,11 @@ fun ProfileIdentityCard(
 }
 
 @Composable
-internal fun ProfileConnectionsCard(modifier: Modifier = Modifier) {
+internal fun ProfileConnectionsCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
     val colors = MaterialTheme.colorScheme
     MomentoCard(modifier = modifier, outlined = true) {
         MomentoMenuRow(
@@ -113,6 +117,8 @@ internal fun ProfileConnectionsCard(modifier: Modifier = Modifier) {
             iconColor = colors.primary,
             iconBackground = colors.primary.copy(alpha = 0.1f),
             chevronColor = colors.primary,
+            onClick = onClick,
+            enabled = enabled,
         )
     }
 }

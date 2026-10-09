@@ -15,6 +15,7 @@ import com.example.momento.app.main.MainRoute
 import com.example.momento.feature.auth.navigation.AuthGraph
 import com.example.momento.feature.auth.navigation.CompleteProfile
 import com.example.momento.feature.auth.navigation.authGraph
+import com.example.momento.feature.friend.presentation.FriendRoute
 import com.example.momento.feature.profile.presentation.editprofile.EditProfileRoute
 import com.example.momento.feature.profile.presentation.profile.ProfileRoute
 
@@ -64,6 +65,9 @@ fun AppNavHost(
                     onEditProfile = {
                         navController.navigate(EditProfile) { launchSingleTop = true }
                     },
+                    onConnectionsClick = {
+                        navController.navigate(Friends) { launchSingleTop = true }
+                    },
                     onSignedOut = {
                         navController.navigate(AuthGraph) {
                             popUpTo(MainGraph) { inclusive = true }
@@ -74,6 +78,9 @@ fun AppNavHost(
             }
             composable<EditProfile> {
                 EditProfileRoute(onBack = onBack)
+            }
+            composable<Friends> {
+                FriendRoute(onBack = onBack)
             }
         }
     }

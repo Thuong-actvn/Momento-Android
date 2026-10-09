@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="friend_screen_title">Kết nối &amp; Lời mời</string>
+    <string name="friend_back">Quay lại Profile</string>
+    <string name="friend_list_title">Bạn bè</string>
+    <string name="friend_username">\@%1$s</string>
+    <string name="friend_connected">Đã kết nối</string>
+    <string name="friend_loading">Đang tải bạn bè…</string>
+    <string name="friend_empty_title">Chưa có bạn bè</string>
+    <string name="friend_empty_description">Bạn bè sẽ xuất hiện ở đây sau khi lời mời kết bạn được chấp nhận.</string>
+    <string name="friend_error_title">Không thể tải bạn bè</string>
+    <string name="friend_load_error">Không thể tải danh sách bạn bè. Vui lòng thử lại.</string>
+    <string name="friend_network_error">Không thể kết nối. Kiểm tra mạng và thử lại.</string>
+    <string name="friend_session_error">Phiên đăng nhập đã thay đổi hoặc hết hạn. Vui lòng đăng nhập lại.</string>
+    <string name="friend_retry">Thử lại</string>
+    <string name="friend_search_placeholder">Tìm theo username…</string>
+    <string name="friend_search_clear">Xóa nội dung tìm kiếm</string>
+    <string name="friend_search_results">Kết quả tìm kiếm</string>
+    <string name="friend_request_title">Lời mời kết bạn</string>
+    <string name="friend_request_description">Đã gửi lời mời kết bạn</string>
+    <string name="friend_request_accept">Chấp nhận</string>
+    <string name="friend_request_reject">Từ chối</string>
+    <string name="friend_request_send">Kết bạn</string>
+    <string name="friend_options">Tùy chọn cho %1$s</string>
+</resources>
