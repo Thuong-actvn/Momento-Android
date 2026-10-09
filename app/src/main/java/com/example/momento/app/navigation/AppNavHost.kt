@@ -15,7 +15,7 @@ import com.example.momento.app.main.MainRoute
 import com.example.momento.feature.auth.navigation.AuthGraph
 import com.example.momento.feature.auth.navigation.CompleteProfile
 import com.example.momento.feature.auth.navigation.authGraph
-import com.example.momento.feature.profile.presentation.editprofile.EditProfilePlaceholderScreen
+import com.example.momento.feature.profile.presentation.editprofile.EditProfileRoute
 import com.example.momento.feature.profile.presentation.profile.ProfileRoute
 
 @Composable
@@ -73,7 +73,7 @@ fun AppNavHost(
                 )
             }
             composable<EditProfile> {
-                EditProfilePlaceholderScreen(onBack = onBack)
+                EditProfileRoute(onBack = onBack)
             }
         }
     }

@@ -19,5 +19,25 @@
     <string name="profile_load_error">Không thể tải lại hồ sơ. Vui lòng thử lại.</string>
     <string name="profile_logout_error">Không thể đăng xuất. Vui lòng thử lại.</string>
     <string name="profile_retry">Thử lại</string>
-    <string name="profile_edit_placeholder">Nội dung đang được cập nhật.</string>
+    <string name="profile_save">Lưu</string>
+    <string name="profile_choose">Chọn</string>
+    <string name="profile_cancel">Hủy</string>
+    <string name="profile_change_avatar">Đổi ảnh đại diện</string>
+    <string name="profile_avatar_gallery">Chọn từ thư viện ảnh</string>
+    <string name="profile_avatar_camera">Chụp ảnh mới</string>
+    <string name="profile_avatar_formats">JPEG, PNG hoặc WebP · Tối đa 5 MiB</string>
+    <string name="profile_display_name_label">TÊN HIỂN THỊ</string>
+    <string name="profile_email_label">EMAIL</string>
+    <string name="profile_phone_label">SỐ ĐIỆN THOẠI</string>
+    <string name="profile_birthday_label">NGÀY SINH</string>
+    <string name="profile_birthday_empty">Chọn ngày sinh</string>
+    <string name="profile_value_empty">Chưa cập nhật</string>
+    <string name="profile_name_required">Vui lòng nhập tên hiển thị.</string>
+    <string name="profile_name_too_long">Tên hiển thị tối đa 50 ký tự.</string>
+    <string name="profile_save_error">Không thể lưu hồ sơ. Vui lòng thử lại.</string>
+    <string name="profile_session_error">Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.</string>
+    <string name="profile_image_too_large">Ảnh vượt quá 5 MiB. Vui lòng chọn ảnh nhỏ hơn.</string>
+    <string name="profile_image_invalid">Vui lòng chọn ảnh JPEG, PNG hoặc WebP hợp lệ.</string>
+    <string name="profile_image_read_error">Không thể đọc ảnh. Vui lòng chọn lại.</string>
+    <string name="profile_image_source_error">Không thể mở thư viện hoặc máy ảnh trên thiết bị này.</string>
 </resources>
