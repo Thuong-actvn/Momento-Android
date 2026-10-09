@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -60,6 +62,43 @@ fun MomentoButton(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun MomentoPillButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    primary: Boolean = true,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    leadingIcon: ImageVector? = null,
+) {
+    val colors = MaterialTheme.colorScheme
+    Button(
+        onClick = onClick,
+        enabled = enabled && !isLoading,
+        modifier = modifier.heightIn(min = 48.dp),
+        shape = CircleShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (primary) colors.primary else colors.surfaceContainer,
+            contentColor = if (primary) colors.onPrimary else colors.onSurface,
+        ),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        elevation = null,
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                color = LocalContentColor.current,
+                strokeWidth = 2.dp,
+            )
+        } else if (leadingIcon != null) {
+            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+        if (isLoading || leadingIcon != null) Spacer(Modifier.width(6.dp))
+        Text(text = text, style = MaterialTheme.typography.labelLarge)
     }
 }
 

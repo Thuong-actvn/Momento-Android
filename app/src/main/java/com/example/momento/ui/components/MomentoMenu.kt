@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,8 +24,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -32,16 +36,62 @@ import androidx.compose.ui.unit.dp
 fun MomentoCard(
     modifier: Modifier = Modifier,
     outlined: Boolean = false,
+    shape: Shape = MaterialTheme.shapes.small,
     content: @Composable () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.small,
+        shape = shape,
         color = colors.surfaceContainerLow,
         border = if (outlined) BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.6f)) else null,
         content = content,
     )
+}
+
+@Composable
+fun MomentoSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    count: Int? = null,
+    supportingText: String? = null,
+    highlighted: Boolean = false,
+) {
+    val colors = MaterialTheme.colorScheme
+    FlowRow(
+        modifier = modifier.fillMaxWidth().semantics { heading() },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            color = colors.onSurface,
+            modifier = Modifier.align(Alignment.CenterVertically),
+        )
+        count?.let {
+            Surface(
+                shape = CircleShape,
+                color = if (highlighted) colors.primaryContainer else colors.surfaceContainer,
+                contentColor = if (highlighted) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterVertically),
+            ) {
+                Text(
+                    text = it.toString(),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                )
+            }
+        }
+        supportingText?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterVertically),
+            )
+        }
+    }
 }
 
 /** A title-only row is compact; a subtitle adds padding and a larger icon. */

@@ -5,6 +5,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -16,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -30,11 +36,13 @@ fun MomentoTextField(
     prefix: (@Composable () -> Unit)? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    trailingIcon: (@Composable () -> Unit)? = null,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
 ) {
     val colors = MaterialTheme.colorScheme
     val inputStyle = MaterialTheme.typography.bodyMedium
     val shape = MaterialTheme.shapes.large
-    val containerColor = colors.surfaceContainerLowest
     val placeholderColor = colors.onSurfaceVariant.copy(alpha = 0.65f)
     val prefixContent: (@Composable () -> Unit)? = if (prefix == null) null else {
         {
@@ -59,6 +67,8 @@ fun MomentoTextField(
             textStyle = inputStyle,
             placeholder = { Text(text = placeholder, style = inputStyle) },
             prefix = prefixContent,
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon,
             shape = shape,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = containerColor,
@@ -83,4 +93,41 @@ fun MomentoTextField(
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
         )
     }
+}
+
+@Composable
+fun MomentoSearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    clearContentDescription: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onSearch: () -> Unit = {},
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+) {
+    MomentoTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = placeholder,
+        placeholder = placeholder,
+        modifier = modifier,
+        enabled = enabled,
+        containerColor = containerColor,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+        leadingIcon = {
+            Icon(imageVector = Icons.Outlined.Search, contentDescription = null)
+        },
+        trailingIcon = if (value.isEmpty()) null else {
+            {
+                IconButton(onClick = { onValueChange("") }, enabled = enabled) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = clearContentDescription,
+                    )
+                }
+            }
+        },
+    )
 }
