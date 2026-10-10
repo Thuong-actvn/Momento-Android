@@ -35,6 +35,7 @@ fun FriendRoute(
         onRefreshRequests = viewModel::refreshRequests,
         onAcceptRequest = { viewModel.respondRequest(it, FriendRequestAction.ACCEPT) },
         onRejectRequest = { viewModel.respondRequest(it, FriendRequestAction.REJECT) },
+        onRemoveFriend = viewModel::removeFriend,
         modifier = modifier,
     )
 }

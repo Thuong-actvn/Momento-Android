@@ -48,6 +48,8 @@ data class FriendUiState(
     @param:StringRes val pendingError: Int? = null,
     val respondingRequestIds: Set<String> = emptySet(),
     val responseErrors: Map<String, Int> = emptyMap(),
+    val removingFriendIds: Set<String> = emptySet(),
+    val removeErrors: Map<String, Int> = emptyMap(),
 )
 
 @HiltViewModel
@@ -174,6 +176,46 @@ class FriendViewModel @Inject constructor(
         }
         responseJobs[requestId] = job
         job.start()
+    }
+
+    fun removeFriend(friendUserId: String) {
+        val current = _state.value
+        if (current.friends.none { it.id == friendUserId } || friendUserId in current.removingFriendIds) return
+        val version = accountVersion
+        _state.update { it.copy(
+            removingFriendIds = it.removingFriendIds + friendUserId,
+            removeErrors = it.removeErrors - friendUserId,
+        ) }
+        viewModelScope.launch {
+            try {
+                val result = repository.removeFriend(friendUserId)
+                currentCoroutineContext().ensureActive()
+                if (version != accountVersion) return@launch
+                result.fold(
+                    onSuccess = {
+                        _state.update { state -> state.copy(
+                            friends = state.friends.filterNot { it.id == friendUserId },
+                            removeErrors = state.removeErrors - friendUserId,
+                        ) }
+                        refreshRelationships()
+                    },
+                    onFailure = { error ->
+                        if (error.isSessionError()) {
+                            clearSessionData()
+                        } else {
+                            _state.update { state -> state.copy(
+                                removeErrors = state.removeErrors +
+                                    (friendUserId to error.messageRes(R.string.friend_remove_error)),
+                            ) }
+                        }
+                    },
+                )
+            } finally {
+                if (version == accountVersion) {
+                    _state.update { state -> state.copy(removingFriendIds = state.removingFriendIds - friendUserId) }
+                }
+            }
+        }
     }
 
     fun refresh() {

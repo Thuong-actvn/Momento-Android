@@ -20,10 +20,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PeopleOutline
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,11 +62,43 @@ fun FriendScreen(
     onRefreshRequests: () -> Unit = onRefresh,
     onAcceptRequest: (String) -> Unit = {},
     onRejectRequest: (String) -> Unit = {},
+    onRemoveFriend: (String) -> Unit = {},
 ) {
     val searching = state.searchQuery.isNotBlank()
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
     var targetRequestId by rememberSaveable { mutableStateOf<String?>(null) }
+    var friendToManageId by rememberSaveable { mutableStateOf<String?>(null) }
+    var friendToRemoveId by rememberSaveable { mutableStateOf<String?>(null) }
+    val friendToManage = state.friends.find { it.id == friendToManageId }
+    friendToManage?.let { friend ->
+        FriendManagementSheet(
+            profile = friend,
+            onDismiss = { friendToManageId = null },
+            onRemove = {
+                friendToManageId = null
+                friendToRemoveId = friend.id
+            },
+        )
+    }
+    state.friends.find { it.id == friendToRemoveId }?.let { friend ->
+        AlertDialog(
+            onDismissRequest = { friendToRemoveId = null },
+            title = { Text(stringResource(R.string.friend_remove_title)) },
+            text = { Text(stringResource(R.string.friend_remove_message, friend.username)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRemoveFriend(friend.id)
+                    friendToRemoveId = null
+                }) { Text(stringResource(R.string.friend_remove_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { friendToRemoveId = null }) {
+                    Text(stringResource(R.string.friend_cancel))
+                }
+            },
+        )
+    }
     LaunchedEffect(state.searchQuery.trim(), targetRequestId, state.pendingRequests) {
         if (!searching && targetRequestId != null) {
             val index = state.pendingRequests.indexOfFirst { it.requestId == targetRequestId }
@@ -108,14 +142,19 @@ fun FriendScreen(
                         },
                     )
                 }
-                if (searching) searchResultsContent(state, onSearch, onLoadMore, onSendRequest) { requestId ->
+                if (searching) searchResultsContent(
+                    state, onSearch, onLoadMore, onSendRequest,
+                    onManageFriend = { friendToManageId = it },
+                ) { requestId ->
                     targetRequestId = requestId
                     focusManager.clearFocus()
                     onSearchQueryChange("")
                 }
                 else {
                     pendingRequestsContent(state, onRefreshRequests, onAcceptRequest, onRejectRequest)
-                    friendListContent(state, onRefresh)
+                    friendListContent(state, onRefresh) { friendId ->
+                        friendToManageId = friendId
+                    }
                 }
             }
         }
@@ -159,7 +198,11 @@ private fun LazyListScope.pendingRequestsContent(
     }
 }
 
-private fun LazyListScope.friendListContent(state: FriendUiState, onRefresh: () -> Unit) {
+private fun LazyListScope.friendListContent(
+    state: FriendUiState,
+    onRefresh: () -> Unit,
+    onManageFriend: (String) -> Unit,
+) {
     item(key = "friends_header", contentType = "header") {
         MomentoSectionHeader(
             title = stringResource(R.string.friend_list_title),
@@ -192,7 +235,12 @@ private fun LazyListScope.friendListContent(state: FriendUiState, onRefresh: () 
             item(key = "empty", contentType = "feedback") { FriendEmptyList() }
         }
         else -> items(state.friends, key = { it.id }, contentType = { "friend" }) { friend ->
-            FriendCard(profile = friend)
+            FriendCard(
+                profile = friend,
+                onManage = { onManageFriend(friend.id) },
+                isLoading = friend.id in state.removingFriendIds,
+                error = state.removeErrors[friend.id]?.let { stringResource(it) },
+            )
         }
     }
 }
@@ -202,6 +250,7 @@ private fun LazyListScope.searchResultsContent(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onSendRequest: (String) -> Unit,
+    onManageFriend: (String) -> Unit,
     onViewRequest: (String) -> Unit = {},
 ) {
     item(key = "search_header", contentType = "header") {
@@ -232,6 +281,7 @@ private fun LazyListScope.searchResultsContent(
         }
         else -> items(state.searchResults, key = { it.id }, contentType = { "search_result" }) { profile ->
             val incoming = state.pendingRequests.find { it.requester.id == profile.id }
+            val isFriend = state.friends.any { it.id == profile.id }
             FriendSearchResultCard(
                 profile = profile,
                 onSendRequest = {
@@ -240,9 +290,12 @@ private fun LazyListScope.searchResultsContent(
                 },
                 hasIncomingRequest = incoming != null,
                 isLoading = profile.id in state.sendingRequestIds,
-                isFriend = state.friends.any { it.id == profile.id },
+                isFriend = isFriend,
+                onManage = { onManageFriend(profile.id) },
+                isRemoving = profile.id in state.removingFriendIds,
                 requestSent = profile.id in state.requestedUserIds,
-                error = state.requestErrors[profile.id]?.let { stringResource(it) },
+                error = (if (isFriend) state.removeErrors[profile.id]
+                    else state.requestErrors[profile.id])?.let { stringResource(it) },
             )
         }
     }

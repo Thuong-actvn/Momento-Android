@@ -36,6 +36,8 @@ internal fun FriendCard(
     profile: PublicProfile,
     modifier: Modifier = Modifier,
     onManage: (() -> Unit)? = null,
+    isLoading: Boolean = false,
+    error: String? = null,
 ) {
     MomentoCard(modifier = modifier, shape = MaterialTheme.shapes.extraLarge) {
         Row(
@@ -50,14 +52,32 @@ internal fun FriendCard(
                 modifier = Modifier.weight(1f),
             )
             onManage?.let {
-                IconButton(onClick = it) {
-                    Icon(
-                        imageVector = Icons.Outlined.MoreVert,
-                        contentDescription = stringResource(R.string.friend_options, profile.username),
-                    )
-                }
+                FriendManageButton(profile = profile, onManage = it, enabled = !isLoading)
             }
         }
+        error?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FriendManageButton(
+    profile: PublicProfile,
+    onManage: () -> Unit,
+    enabled: Boolean = true,
+) {
+    IconButton(onClick = onManage, enabled = enabled) {
+        Icon(
+            imageVector = Icons.Outlined.MoreVert,
+            contentDescription = stringResource(R.string.friend_options, profile.username),
+        )
     }
 }
 
@@ -119,6 +139,8 @@ internal fun FriendSearchResultCard(
     requestSent: Boolean = false,
     hasIncomingRequest: Boolean = false,
     error: String? = null,
+    onManage: (() -> Unit)? = null,
+    isRemoving: Boolean = false,
  ) {
     MomentoCard(modifier = modifier, shape = MaterialTheme.shapes.extraLarge) {
         Column(
@@ -126,11 +148,21 @@ internal fun FriendSearchResultCard(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (isFriend) {
-                FriendIdentity(
-                    profile = profile,
-                    subtitle = stringResource(R.string.friend_connected),
-                    connected = true,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    FriendIdentity(
+                        profile = profile,
+                        subtitle = stringResource(R.string.friend_connected),
+                        connected = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    onManage?.let {
+                        FriendManageButton(profile = profile, onManage = it, enabled = enabled && !isRemoving)
+                    }
+                }
             } else {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
