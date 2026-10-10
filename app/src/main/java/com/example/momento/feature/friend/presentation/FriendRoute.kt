@@ -8,6 +8,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.momento.feature.friend.domain.model.FriendRequestAction
 
 @Composable
 fun FriendRoute(
@@ -31,6 +32,9 @@ fun FriendRoute(
         onSearch = viewModel::retrySearch,
         onLoadMore = viewModel::loadMoreSearchResults,
         onSendRequest = viewModel::sendRequest,
+        onRefreshRequests = viewModel::refreshRequests,
+        onAcceptRequest = { viewModel.respondRequest(it, FriendRequestAction.ACCEPT) },
+        onRejectRequest = { viewModel.respondRequest(it, FriendRequestAction.REJECT) },
         modifier = modifier,
     )
 }

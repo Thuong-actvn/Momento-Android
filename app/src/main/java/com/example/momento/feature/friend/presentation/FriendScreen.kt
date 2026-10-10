@@ -27,6 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -53,12 +57,23 @@ fun FriendScreen(
     onLoadMore: () -> Unit,
     onSendRequest: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onRefreshRequests: () -> Unit = onRefresh,
+    onAcceptRequest: (String) -> Unit = {},
+    onRejectRequest: (String) -> Unit = {},
 ) {
     val searching = state.searchQuery.isNotBlank()
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
-    LaunchedEffect(state.searchQuery.trim()) {
-        listState.scrollToItem(0)
+    var targetRequestId by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(state.searchQuery.trim(), targetRequestId, state.pendingRequests) {
+        if (!searching && targetRequestId != null) {
+            val index = state.pendingRequests.indexOfFirst { it.requestId == targetRequestId }
+            if (index >= 0) {
+                val feedbackItems = if (state.pendingError != null) 1 else 0
+                listState.scrollToItem(2 + feedbackItems + index)
+            }
+            targetRequestId = null
+        } else if (searching) listState.scrollToItem(0)
     }
     FriendScaffold(
         onBack = onBack,
@@ -66,7 +81,8 @@ fun FriendScreen(
     ) { innerPadding ->
         PullToRefreshBox(
             isRefreshing = if (searching) state.isSearching && state.hasSearched
-                else state.isRefreshing && state.hasLoaded,
+                else (state.isRefreshing && state.hasLoaded) ||
+                    (state.isRefreshingRequests && state.hasLoadedRequests),
             onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
@@ -92,10 +108,54 @@ fun FriendScreen(
                         },
                     )
                 }
-                if (searching) searchResultsContent(state, onSearch, onLoadMore, onSendRequest)
-                else friendListContent(state, onRefresh)
+                if (searching) searchResultsContent(state, onSearch, onLoadMore, onSendRequest) { requestId ->
+                    targetRequestId = requestId
+                    focusManager.clearFocus()
+                    onSearchQueryChange("")
+                }
+                else {
+                    pendingRequestsContent(state, onRefreshRequests, onAcceptRequest, onRejectRequest)
+                    friendListContent(state, onRefresh)
+                }
             }
         }
+    }
+}
+
+private fun LazyListScope.pendingRequestsContent(
+    state: FriendUiState,
+    onRefresh: () -> Unit,
+    onAccept: (String) -> Unit,
+    onReject: (String) -> Unit,
+) {
+    item(key = "requests_header", contentType = "header") {
+        MomentoSectionHeader(title = stringResource(R.string.friend_request_title),
+            count = if (state.hasLoadedRequests) state.pendingRequests.size else null,
+            highlighted = true, modifier = Modifier.padding(vertical = 8.dp))
+    }
+    state.pendingError?.let { error ->
+        item(key = "requests_error", contentType = "feedback") {
+            MomentoRetryMessage(message = stringResource(error), actionText = stringResource(R.string.friend_retry),
+                onRetry = onRefresh, enabled = !state.isRefreshingRequests)
+        }
+    }
+    if (!state.hasLoadedRequests && state.pendingError == null) {
+        item(key = "requests_loading", contentType = "feedback") {
+            FriendLoading(R.string.friend_pending_loading)
+        }
+    } else if (state.hasLoadedRequests && state.pendingRequests.isEmpty() && state.pendingError == null) {
+        item(key = "requests_empty", contentType = "feedback") {
+            Text(text = stringResource(R.string.friend_pending_empty),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 8.dp))
+        }
+    }
+    items(state.pendingRequests, key = { "request_${it.requestId}" }, contentType = { "request" }) { request ->
+        FriendRequestCard(request = request, onAccept = { onAccept(request.requestId) },
+            onReject = { onReject(request.requestId) },
+            enabled = request.requester.id !in state.sendingRequestIds,
+            isLoading = request.requestId in state.respondingRequestIds,
+            error = state.responseErrors[request.requestId]?.let { stringResource(it) })
     }
 }
 
@@ -142,6 +202,7 @@ private fun LazyListScope.searchResultsContent(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onSendRequest: (String) -> Unit,
+    onViewRequest: (String) -> Unit = {},
 ) {
     item(key = "search_header", contentType = "header") {
         MomentoSectionHeader(
@@ -170,9 +231,14 @@ private fun LazyListScope.searchResultsContent(
             item(key = "search_empty", contentType = "feedback") { FriendEmptySearch() }
         }
         else -> items(state.searchResults, key = { it.id }, contentType = { "search_result" }) { profile ->
+            val incoming = state.pendingRequests.find { it.requester.id == profile.id }
             FriendSearchResultCard(
                 profile = profile,
-                onSendRequest = { onSendRequest(profile.id) },
+                onSendRequest = {
+                    if (incoming != null) onViewRequest(incoming.requestId)
+                    else onSendRequest(profile.id)
+                },
+                hasIncomingRequest = incoming != null,
                 isLoading = profile.id in state.sendingRequestIds,
                 isFriend = state.friends.any { it.id == profile.id },
                 requestSent = profile.id in state.requestedUserIds,

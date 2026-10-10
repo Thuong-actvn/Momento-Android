@@ -9,6 +9,8 @@ import com.example.momento.core.user.domain.model.PublicProfile
 import com.example.momento.feature.friend.data.remote.FriendError
 import com.example.momento.feature.friend.data.remote.FriendException
 import com.example.momento.feature.friend.domain.repository.FriendRepository
+import com.example.momento.feature.friend.domain.model.FriendRequest
+import com.example.momento.feature.friend.domain.model.FriendRequestAction
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineStart
@@ -40,6 +42,12 @@ data class FriendUiState(
     // Local acknowledgements only; the backend has no outgoing-request list.
     val requestedUserIds: Set<String> = emptySet(),
     val requestErrors: Map<String, Int> = emptyMap(),
+    val pendingRequests: List<FriendRequest> = emptyList(),
+    val hasLoadedRequests: Boolean = false,
+    val isRefreshingRequests: Boolean = false,
+    @param:StringRes val pendingError: Int? = null,
+    val respondingRequestIds: Set<String> = emptySet(),
+    val responseErrors: Map<String, Int> = emptyMap(),
 )
 
 @HiltViewModel
@@ -50,6 +58,9 @@ class FriendViewModel @Inject constructor(
     private val _state = MutableStateFlow(FriendUiState())
     val state = _state.asStateFlow()
     private var refreshJob: Job? = null
+    private var pendingJob: Job? = null
+    private val responseJobs = mutableMapOf<String, Job>()
+    private var relationshipVersion = 0L
     private var searchJob: Job? = null
     private val requestJobs = mutableMapOf<String, Job>()
     private var searchVersion = 0L
@@ -74,6 +85,95 @@ class FriendViewModel @Inject constructor(
 
     fun refreshFriends() {
         loadFriends(force = false)
+        refreshRequests()
+    }
+
+    fun refreshRequests() = loadRequests(force = false)
+
+    private fun refreshRelationships() {
+        // Reads started before a confirmed write must not restore obsolete relationships.
+        relationshipVersion++
+        loadFriends(force = true)
+        loadRequests(force = true)
+    }
+
+    private fun loadRequests(force: Boolean) {
+        if (_state.value.isRefreshingRequests && !force) return
+        pendingJob?.cancel()
+        val version = relationshipVersion
+        val account = accountVersion
+        _state.update { it.copy(isRefreshingRequests = true, pendingError = null) }
+        pendingJob = viewModelScope.launch {
+            val result = repository.getPendingRequests()
+            currentCoroutineContext().ensureActive()
+            if (version != relationshipVersion || account != accountVersion) return@launch
+            result.fold(
+                onSuccess = { requests ->
+                    val ids = requests.map { it.requestId }.toSet()
+                    _state.update {
+                        it.copy(pendingRequests = requests.distinctBy { request -> request.requestId },
+                            hasLoadedRequests = true, isRefreshingRequests = false,
+                            pendingError = null, responseErrors = it.responseErrors.filterKeys { id -> id in ids })
+                    }
+                },
+                onFailure = { error ->
+                    if (error.isSessionError()) clearSessionData()
+                    else _state.update { it.copy(isRefreshingRequests = false,
+                        pendingError = error.messageRes(R.string.friend_pending_load_error)) }
+                },
+            )
+        }
+    }
+
+    fun respondRequest(requestId: String, action: FriendRequestAction) {
+        val request = _state.value.pendingRequests.find { it.requestId == requestId } ?: return
+        if (requestId in _state.value.respondingRequestIds ||
+            request.requester.id in _state.value.sendingRequestIds) return
+        val account = accountVersion
+        _state.update { it.copy(respondingRequestIds = it.respondingRequestIds + requestId,
+            responseErrors = it.responseErrors - requestId) }
+        val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
+            try {
+                val result = repository.respondRequest(requestId, action)
+                currentCoroutineContext().ensureActive()
+                if (account != accountVersion) return@launch
+                result.fold(
+                    onSuccess = {
+                        _state.update {
+                            it.copy(pendingRequests = it.pendingRequests.filterNot { pending -> pending.requestId == requestId },
+                                friends = if (action == FriendRequestAction.ACCEPT)
+                                    (it.friends + request.requester).distinctBy { profile -> profile.id } else it.friends,
+                                requestedUserIds = it.requestedUserIds - request.requester.id,
+                                requestErrors = it.requestErrors - request.requester.id,
+                                responseErrors = it.responseErrors - requestId)
+                        }
+                        refreshRelationships()
+                    },
+                    onFailure = { error ->
+                        val exception = error as? FriendException
+                        when {
+                            error.isSessionError() -> clearSessionData()
+                            exception?.statusCode == 409 -> _state.update {
+                                it.copy(responseErrors = it.responseErrors + (requestId to R.string.friend_limit_error))
+                            }
+                            exception?.statusCode == 404 || exception?.backendCode in setOf(
+                                "FRIEND_REQUEST_NOT_FOUND", "FRIEND_REQUEST_ALREADY_PROCESSED",
+                                "FRIEND_REQUEST_NOT_PENDING",
+                            ) -> refreshRelationships()
+                            else -> _state.update { it.copy(responseErrors = it.responseErrors +
+                                (requestId to error.messageRes(R.string.friend_response_error))) }
+                        }
+                    },
+                )
+            } finally {
+                if (account == accountVersion) {
+                    responseJobs.remove(requestId)
+                    _state.update { it.copy(respondingRequestIds = it.respondingRequestIds - requestId) }
+                }
+            }
+        }
+        responseJobs[requestId] = job
+        job.start()
     }
 
     fun refresh() {
@@ -84,10 +184,13 @@ class FriendViewModel @Inject constructor(
     private fun loadFriends(force: Boolean) {
         if (_state.value.isRefreshing && !force) return
         refreshJob?.cancel()
+        val version = relationshipVersion
+        val account = accountVersion
         _state.update { it.copy(isRefreshing = true, error = null) }
         refreshJob = viewModelScope.launch {
             val result = repository.getFriends()
             currentCoroutineContext().ensureActive()
+            if (version != relationshipVersion || account != accountVersion) return@launch
             result.fold(
                 onSuccess = { friends ->
                     val friendIds = friends.map { it.id }.toSet()
@@ -204,6 +307,7 @@ class FriendViewModel @Inject constructor(
     fun sendRequest(userId: String) {
         val current = _state.value
         if (userId == ownerId || current.searchResults.none { it.id == userId } ||
+            current.pendingRequests.any { it.requester.id == userId } ||
             current.friends.any { it.id == userId } || userId in current.requestedUserIds ||
             userId in current.sendingRequestIds
         ) return
@@ -220,7 +324,7 @@ class FriendViewModel @Inject constructor(
                     onSuccess = {
                         _state.update { it.copy(requestedUserIds = it.requestedUserIds + userId) }
                         // A reverse pending invitation may have been auto-accepted.
-                        loadFriends(force = true)
+                        refreshRelationships()
                     },
                     onFailure = { error ->
                         when {
@@ -258,8 +362,12 @@ class FriendViewModel @Inject constructor(
 
     private fun cancelOperations() {
         accountVersion++
+        relationshipVersion++
         searchVersion++
         refreshJob?.cancel()
+        pendingJob?.cancel()
+        responseJobs.values.forEach { it.cancel() }
+        responseJobs.clear()
         searchJob?.cancel()
         requestJobs.values.forEach { it.cancel() }
         requestJobs.clear()
@@ -274,6 +382,9 @@ class FriendViewModel @Inject constructor(
     private fun Throwable.messageRes(@StringRes fallback: Int): Int = when {
         isSessionError() -> R.string.friend_session_error
         (this as? FriendException)?.reason == FriendError.NETWORK -> R.string.friend_network_error
+        (this as? FriendException)?.backendCode in setOf(
+            "FRIEND_LIMIT_EXCEEDED", "FRIEND_LIMIT_REACHED", "MAX_FRIENDS_REACHED",
+        ) -> R.string.friend_limit_error
         else -> fallback
     }
 

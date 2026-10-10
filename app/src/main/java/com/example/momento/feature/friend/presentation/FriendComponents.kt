@@ -69,6 +69,7 @@ internal fun FriendRequestCard(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isLoading: Boolean = false,
+    error: String? = null,
 ) {
     MomentoCard(modifier = modifier, shape = MaterialTheme.shapes.extraLarge) {
         Column(
@@ -98,6 +99,11 @@ internal fun FriendRequestCard(
                     isLoading = isLoading,
                 )
             }
+            error?.let {
+                Text(text = it, color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            }
         }
     }
 }
@@ -111,29 +117,39 @@ internal fun FriendSearchResultCard(
     isLoading: Boolean = false,
     isFriend: Boolean = false,
     requestSent: Boolean = false,
+    hasIncomingRequest: Boolean = false,
     error: String? = null,
-) {
+ ) {
     MomentoCard(modifier = modifier, shape = MaterialTheme.shapes.extraLarge) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                FriendIdentity(profile = profile, modifier = Modifier.weight(1f))
-                MomentoPillButton(
-                    text = stringResource(when {
-                        isFriend -> R.string.friend_connected
-                        requestSent -> R.string.friend_request_sent
-                        else -> R.string.friend_request_send
-                    }),
-                    onClick = onSendRequest,
-                    primary = !isFriend && !requestSent,
-                    enabled = enabled && !isFriend && !requestSent,
-                    isLoading = isLoading,
+            if (isFriend) {
+                FriendIdentity(
+                    profile = profile,
+                    subtitle = stringResource(R.string.friend_connected),
+                    connected = true,
                 )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    FriendIdentity(profile = profile, modifier = Modifier.weight(1f))
+                    MomentoPillButton(
+                        text = stringResource(
+                            if (hasIncomingRequest) R.string.friend_view_request
+                            else if (requestSent) R.string.friend_request_sent
+                            else R.string.friend_request_send,
+                        ),
+                        onClick = onSendRequest,
+                        primary = !requestSent && !hasIncomingRequest,
+                        enabled = enabled && (hasIncomingRequest || !requestSent),
+                        isLoading = isLoading,
+                    )
+                }
             }
             error?.let {
                 Text(

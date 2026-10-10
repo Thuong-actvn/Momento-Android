@@ -29,4 +29,10 @@
     <string name="friend_request_sent">Đã gửi</string>
     <string name="friend_request_send_error">Không thể gửi lời mời kết bạn. Vui lòng thử lại.</string>
     <string name="friend_options">Tùy chọn cho %1$s</string>
+    <string name="friend_view_request">Xem lời mời</string>
+    <string name="friend_pending_loading">Đang tải lời mời…</string>
+    <string name="friend_pending_empty">Chưa có lời mời kết bạn</string>
+    <string name="friend_pending_load_error">Không thể tải lời mời. Vui lòng thử lại.</string>
+    <string name="friend_response_error">Không thể xử lý lời mời. Vui lòng thử lại.</string>
+    <string name="friend_limit_error">Không thể kết bạn vì một trong hai tài khoản đã đạt giới hạn bạn bè.</string>
 </resources>
