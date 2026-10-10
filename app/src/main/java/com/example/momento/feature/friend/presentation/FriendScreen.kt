@@ -1,5 +1,6 @@
 package com.example.momento.feature.friend.presentation
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -7,13 +8,17 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PeopleOutline
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,8 +26,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -30,7 +37,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.momento.R
+import com.example.momento.ui.components.MomentoPillButton
 import com.example.momento.ui.components.MomentoRetryMessage
+import com.example.momento.ui.components.MomentoSearchField
 import com.example.momento.ui.components.MomentoSectionHeader
 import com.example.momento.ui.components.MomentoTopBar
 
@@ -39,64 +48,154 @@ fun FriendScreen(
     state: FriendUiState,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onLoadMore: () -> Unit,
+    onSendRequest: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val searching = state.searchQuery.isNotBlank()
+    val listState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(state.searchQuery.trim()) {
+        listState.scrollToItem(0)
+    }
     FriendScaffold(
         onBack = onBack,
         modifier = modifier,
     ) { innerPadding ->
         PullToRefreshBox(
-            isRefreshing = state.isRefreshing && state.hasLoaded,
+            isRefreshing = if (searching) state.isSearching && state.hasSearched
+                else state.isRefreshing && state.hasLoaded,
             onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .consumeWindowInsets(innerPadding),
+                .consumeWindowInsets(innerPadding)
+                .imePadding(),
         ) {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item(key = "friends_header", contentType = "header") {
-                    MomentoSectionHeader(
-                        title = stringResource(R.string.friend_list_title),
-                        count = if (state.hasLoaded) state.friends.size else null,
-                        modifier = Modifier.padding(vertical = 8.dp),
+                item(key = "search_field", contentType = "search") {
+                    MomentoSearchField(
+                        value = state.searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        placeholder = stringResource(R.string.friend_search_placeholder),
+                        clearContentDescription = stringResource(R.string.friend_search_clear),
+                        onSearch = {
+                            focusManager.clearFocus()
+                            onSearch()
+                        },
                     )
                 }
-                state.error?.let { error ->
-                    item(key = "error", contentType = "feedback") {
-                        if (!state.hasLoaded) {
-                            Text(
-                                text = stringResource(R.string.friend_error_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(top = 24.dp),
-                            )
-                        }
-                        MomentoRetryMessage(
-                            message = stringResource(error),
-                            actionText = stringResource(R.string.friend_retry),
-                            onRetry = onRefresh,
-                            enabled = !state.isRefreshing,
-                        )
-                    }
-                }
-                when {
-                    !state.hasLoaded && state.error == null -> {
-                        item(key = "loading", contentType = "feedback") {
-                            FriendLoading()
-                        }
-                    }
-                    state.hasLoaded && state.friends.isEmpty() && state.error == null -> {
-                        item(key = "empty", contentType = "feedback") {
-                            FriendEmptyList()
-                        }
-                    }
-                    else -> items(state.friends, key = { it.id }, contentType = { "friend" }) { friend ->
-                        FriendCard(profile = friend)
-                    }
-                }
+                if (searching) searchResultsContent(state, onSearch, onLoadMore, onSendRequest)
+                else friendListContent(state, onRefresh)
+            }
+        }
+    }
+}
+
+private fun LazyListScope.friendListContent(state: FriendUiState, onRefresh: () -> Unit) {
+    item(key = "friends_header", contentType = "header") {
+        MomentoSectionHeader(
+            title = stringResource(R.string.friend_list_title),
+            count = if (state.hasLoaded) state.friends.size else null,
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
+    }
+    state.error?.let { error ->
+        item(key = "error", contentType = "feedback") {
+            if (!state.hasLoaded) {
+                Text(
+                    text = stringResource(R.string.friend_error_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 24.dp),
+                )
+            }
+            MomentoRetryMessage(
+                message = stringResource(error),
+                actionText = stringResource(R.string.friend_retry),
+                onRetry = onRefresh,
+                enabled = !state.isRefreshing,
+            )
+        }
+    }
+    when {
+        !state.hasLoaded && state.error == null -> item(key = "loading", contentType = "feedback") {
+            FriendLoading()
+        }
+        state.hasLoaded && state.friends.isEmpty() && state.error == null -> {
+            item(key = "empty", contentType = "feedback") { FriendEmptyList() }
+        }
+        else -> items(state.friends, key = { it.id }, contentType = { "friend" }) { friend ->
+            FriendCard(profile = friend)
+        }
+    }
+}
+
+private fun LazyListScope.searchResultsContent(
+    state: FriendUiState,
+    onRetry: () -> Unit,
+    onLoadMore: () -> Unit,
+    onSendRequest: (String) -> Unit,
+) {
+    item(key = "search_header", contentType = "header") {
+        MomentoSectionHeader(
+            title = stringResource(R.string.friend_search_results),
+            count = if (state.hasSearched) state.searchResults.size else null,
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
+    }
+    state.searchError?.let { error ->
+        item(key = "search_error", contentType = "feedback") {
+            MomentoRetryMessage(
+                message = stringResource(error),
+                actionText = stringResource(R.string.friend_retry),
+                onRetry = onRetry,
+                enabled = !state.isSearching,
+            )
+        }
+    }
+    when {
+        state.isSearching && !state.hasSearched -> {
+            item(key = "search_loading", contentType = "feedback") {
+                FriendLoading(message = R.string.friend_search_loading)
+            }
+        }
+        state.hasSearched && state.searchResults.isEmpty() && state.searchError == null -> {
+            item(key = "search_empty", contentType = "feedback") { FriendEmptySearch() }
+        }
+        else -> items(state.searchResults, key = { it.id }, contentType = { "search_result" }) { profile ->
+            FriendSearchResultCard(
+                profile = profile,
+                onSendRequest = { onSendRequest(profile.id) },
+                isLoading = profile.id in state.sendingRequestIds,
+                isFriend = state.friends.any { it.id == profile.id },
+                requestSent = profile.id in state.requestedUserIds,
+                error = state.requestErrors[profile.id]?.let { stringResource(it) },
+            )
+        }
+    }
+    if (state.hasMoreSearchResults) {
+        item(key = "search_more", contentType = "feedback") {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                state.loadMoreError?.let { error ->
+                    MomentoRetryMessage(
+                        message = stringResource(error),
+                        actionText = stringResource(R.string.friend_retry),
+                        onRetry = onLoadMore,
+                        enabled = !state.isLoadingMoreResults,
+                    )
+                } ?: MomentoPillButton(
+                    text = stringResource(R.string.friend_search_more),
+                    onClick = onLoadMore,
+                    primary = false,
+                    isLoading = state.isLoadingMoreResults,
+                )
             }
         }
     }
@@ -124,7 +223,7 @@ internal fun FriendScaffold(
 }
 
 @Composable
-private fun FriendLoading() {
+private fun FriendLoading(@StringRes message: Int = R.string.friend_loading) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -132,10 +231,37 @@ private fun FriendLoading() {
     ) {
         CircularProgressIndicator(modifier = Modifier.size(32.dp), strokeWidth = 3.dp)
         Text(
-            text = stringResource(R.string.friend_loading),
+            text = stringResource(message),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
+    }
+}
+
+@Composable
+private fun FriendEmptySearch() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 64.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Search,
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.friend_search_empty_title),
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = stringResource(R.string.friend_search_empty_description),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
         )
     }
 }

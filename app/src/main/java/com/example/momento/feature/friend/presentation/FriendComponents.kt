@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -107,20 +109,40 @@ internal fun FriendSearchResultCard(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isLoading: Boolean = false,
+    isFriend: Boolean = false,
+    requestSent: Boolean = false,
+    error: String? = null,
 ) {
     MomentoCard(modifier = modifier, shape = MaterialTheme.shapes.extraLarge) {
-        Row(
+        Column(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FriendIdentity(profile = profile, modifier = Modifier.weight(1f))
-            MomentoPillButton(
-                text = stringResource(R.string.friend_request_send),
-                onClick = onSendRequest,
-                enabled = enabled,
-                isLoading = isLoading,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                FriendIdentity(profile = profile, modifier = Modifier.weight(1f))
+                MomentoPillButton(
+                    text = stringResource(when {
+                        isFriend -> R.string.friend_connected
+                        requestSent -> R.string.friend_request_sent
+                        else -> R.string.friend_request_send
+                    }),
+                    onClick = onSendRequest,
+                    primary = !isFriend && !requestSent,
+                    enabled = enabled && !isFriend && !requestSent,
+                    isLoading = isLoading,
+                )
+            }
+            error?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+            }
         }
     }
 }

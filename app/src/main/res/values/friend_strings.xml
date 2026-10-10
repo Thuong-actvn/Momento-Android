@@ -16,10 +16,17 @@
     <string name="friend_search_placeholder">Tìm theo username…</string>
     <string name="friend_search_clear">Xóa nội dung tìm kiếm</string>
     <string name="friend_search_results">Kết quả tìm kiếm</string>
+    <string name="friend_search_loading">Đang tìm người dùng…</string>
+    <string name="friend_search_empty_title">Không tìm thấy người dùng</string>
+    <string name="friend_search_empty_description">Thử tìm bằng username khác.</string>
+    <string name="friend_search_error">Không thể tìm kiếm người dùng. Vui lòng thử lại.</string>
+    <string name="friend_search_more">Xem thêm</string>
     <string name="friend_request_title">Lời mời kết bạn</string>
     <string name="friend_request_description">Đã gửi lời mời kết bạn</string>
     <string name="friend_request_accept">Chấp nhận</string>
     <string name="friend_request_reject">Từ chối</string>
     <string name="friend_request_send">Kết bạn</string>
+    <string name="friend_request_sent">Đã gửi</string>
+    <string name="friend_request_send_error">Không thể gửi lời mời kết bạn. Vui lòng thử lại.</string>
     <string name="friend_options">Tùy chọn cho %1$s</string>
 </resources>

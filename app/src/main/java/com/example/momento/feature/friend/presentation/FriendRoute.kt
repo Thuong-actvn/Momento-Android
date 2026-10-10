@@ -26,7 +26,11 @@ fun FriendRoute(
     FriendScreen(
         state = state,
         onBack = onBack,
-        onRefresh = viewModel::refreshFriends,
+        onRefresh = viewModel::refresh,
+        onSearchQueryChange = viewModel::onSearchQueryChange,
+        onSearch = viewModel::retrySearch,
+        onLoadMore = viewModel::loadMoreSearchResults,
+        onSendRequest = viewModel::sendRequest,
         modifier = modifier,
     )
 }
