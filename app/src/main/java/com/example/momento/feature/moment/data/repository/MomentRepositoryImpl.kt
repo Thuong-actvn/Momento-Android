@@ -74,9 +74,8 @@ class MomentRepositoryImpl @Inject constructor(
             else -> throw MomentException(MomentError.INVALID_IMAGE)
         }
         val recipients = if (audienceType == AudienceType.CUSTOM) {
-            audienceUserIds.map(::validateId).distinct().also { ids ->
-                require(ids.isNotEmpty()) { "Select at least one friend for a custom audience" }
-            }
+            // The backend accepts an empty CUSTOM audience as owner-only visibility.
+            audienceUserIds.map(::validateId).distinct()
         } else {
             null
         }

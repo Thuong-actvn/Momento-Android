@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +50,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.example.momento.R
+import com.example.momento.feature.moment.presentation.camera.CameraRoute
 import com.example.momento.feature.moment.presentation.feed.FeedScreen
 import com.example.momento.ui.theme.MomentoTheme
 
@@ -92,6 +94,7 @@ fun MainScreenContent(
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
 ) {
+    val tabStateHolder = rememberSaveableStateHolder()
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -109,14 +112,16 @@ fun MainScreenContent(
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding),
         ) {
-            when (selectedTab) {
-                MainTab.FEED -> FeedScreen(
-                    modifier = Modifier.fillMaxSize(),
-                    avatarUrl = avatarUrl,
-                    onAvatarClick = onAvatarClick,
-                )
-                MainTab.CAMERA -> CameraPlaceholder(modifier = Modifier.fillMaxSize())
-                MainTab.JOURNAL -> JournalPlaceholder(modifier = Modifier.fillMaxSize())
+            tabStateHolder.SaveableStateProvider(selectedTab) {
+                when (selectedTab) {
+                    MainTab.FEED -> FeedScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        avatarUrl = avatarUrl,
+                        onAvatarClick = onAvatarClick,
+                    )
+                    MainTab.CAMERA -> CameraRoute(modifier = Modifier.fillMaxSize(), ownAvatarUrl = avatarUrl)
+                    MainTab.JOURNAL -> JournalPlaceholder(modifier = Modifier.fillMaxSize())
+                }
             }
         }
     }
@@ -258,14 +263,6 @@ private fun LabeledTab(
             textAlign = TextAlign.Center,
         )
     }
-}
-
-@Composable
-private fun CameraPlaceholder(modifier: Modifier = Modifier) {
-    TabPlaceholder(
-        title = stringResource(R.string.main_camera_placeholder),
-        modifier = modifier,
-    )
 }
 
 @Composable

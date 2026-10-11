@@ -19,7 +19,7 @@ interface MomentRepository {
 
     suspend fun getMyMoments(cursor: String? = null, limit: Int = 10): Result<CursorPage<Moment>>
 
-    /** CUSTOM requires at least one backend friend UUID. Uploads are never retried here. */
+    /** CUSTOM with no viewers saves for the owner only. Uploads are never retried here. */
     suspend fun uploadMoment(
         image: File,
         mimeType: String,
