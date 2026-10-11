@@ -50,12 +50,22 @@ data class CameraUiState(
     val supportedZoomRatios: List<Float> = emptyList(),
     val latestImage: String? = null,
     val isSending: Boolean = false,
-    val canUpload: Boolean = false,
     @param:StringRes val error: Int? = null,
+    @param:StringRes val successMessage: Int? = null,
 ) {
     val hasDraft: Boolean get() = draftImage != null
     val canCapture: Boolean get() = !hasDraft && previewStatus == CameraPreviewStatus.READY && !isSending
-    val canSend: Boolean get() = hasDraft && selection.isValid && !isSending && canUpload
+    val canSend: Boolean
+        get() {
+            if (!hasDraft || isSending || !selection.isValid) return false
+
+            // Tất cả bạn bè và chỉ mình tôi không cần danh sách ID người nhận.
+            if (selection.audience != CameraAudience.SELECTED_FRIENDS) return true
+
+            if (!hasLoadedRecipients || isLoadingRecipients || recipientsError != null) return false
+            val availableIds = recipients.map { recipient -> recipient.id }
+            return availableIds.containsAll(selection.friendIds)
+        }
 }
 
 const val MOMENT_CAPTION_LIMIT = 40

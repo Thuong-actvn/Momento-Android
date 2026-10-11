@@ -6,6 +6,10 @@ import android.provider.Settings
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,8 +18,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.app.ActivityCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -40,6 +46,14 @@ fun CameraRoute(
     val activity = LocalActivity.current
     val draft by viewModel.state.collectAsStateWithLifecycle()
     val gallery by galleryViewModel.state.collectAsStateWithLifecycle()
+    val snackbar = remember { SnackbarHostState() }
+    val successMessage = draft.successMessage?.let { stringResource(it) }
+    LaunchedEffect(successMessage) {
+        if (successMessage != null) {
+            snackbar.showSnackbar(successMessage)
+            viewModel.clearSuccessMessage()
+        }
+    }
     var showGallery by rememberSaveable { mutableStateOf(false) }
     var askedCamera by rememberSaveable { mutableStateOf(false) }
     var askedGallery by rememberSaveable { mutableStateOf(false) }
@@ -75,6 +89,7 @@ fun CameraRoute(
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         refreshCameraPermission()
+        viewModel.refreshRecipients()
     }
     ObserveGalleryChanges(onRefresh = ::refreshGallery)
 
@@ -107,31 +122,37 @@ fun CameraRoute(
         showGallery = true
     }
 
-    CameraScreen(
-        state = state,
-        actions = CameraActions(
-            onCapture = ::captureMoment,
-            onDiscard = viewModel::discardDraft,
-            onCaptionChanged = viewModel::changeCaption,
-            onAudienceSelected = viewModel::selectAudience,
-            onGallery = ::openGallery,
-            onFlashToggled = session::toggleFlash,
-            onCameraSwitched = session::switchCamera,
-            onZoomSelected = session::selectZoom,
-            onRetryCamera = { cameraRestart++ },
-            onRequestCameraPermission = {
-                if (cameraDenied) openSettings() else {
-                    askedCamera = true
-                    cameraPermission.launch(Manifest.permission.CAMERA)
-                }
+    Box(modifier) {
+        CameraScreen(
+            state = state,
+            actions = CameraActions(
+                onCapture = ::captureMoment,
+                onSend = viewModel::sendMoment,
+                onDiscard = viewModel::discardDraft,
+                onCaptionChanged = viewModel::changeCaption,
+                onAudienceSelected = viewModel::selectAudience,
+                onFriendToggled = viewModel::toggleFriend,
+                onRetryRecipients = viewModel::refreshRecipients,
+                onGallery = ::openGallery,
+                onFlashToggled = session::toggleFlash,
+                onCameraSwitched = session::switchCamera,
+                onZoomSelected = session::selectZoom,
+                onRetryCamera = { cameraRestart++ },
+                onRequestCameraPermission = {
+                    if (cameraDenied) openSettings() else {
+                        askedCamera = true
+                        cameraPermission.launch(Manifest.permission.CAMERA)
+                    }
+                },
+            ),
+            ownAvatarUrl = ownAvatarUrl,
+            modifier = Modifier.fillMaxSize(),
+            viewfinder = {
+                if (showViewfinder) CameraViewfinder(session)
             },
-        ),
-        ownAvatarUrl = ownAvatarUrl,
-        modifier = modifier,
-        viewfinder = {
-            if (showViewfinder) CameraViewfinder(session)
-        },
-    )
+        )
+        SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
+    }
     if (showGallery) GallerySheet(
         state = gallery,
         onDismiss = { showGallery = false },

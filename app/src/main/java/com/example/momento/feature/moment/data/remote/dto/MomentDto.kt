@@ -50,7 +50,7 @@ fun PhotoResponseDto.toDomain(): Moment = Moment(
         AudienceType.valueOf(required(audienceType, "audienceType"))
     }.getOrElse { throw IllegalArgumentException("Unknown audienceType: $audienceType", it) },
     metadata = metadata,
-    createdAt = Instant.parse(required(createdAt, "createdAt")),
+    createdAt = createdAt?.let(Instant::parse),
 )
 
 fun CursorPagedResponsePhotoResponseDto.toDomain(): CursorPage<Moment> = CursorPage(

@@ -23,7 +23,8 @@ data class Moment(
     val caption: String?,
     val audienceType: AudienceType,
     val metadata: JsonElement?,
-    val createdAt: Instant,
+    // Upload responses may arrive before the backend populates the creation timestamp.
+    val createdAt: Instant?,
 )
 
 data class GalleryImage(val id: String, val uri: String)

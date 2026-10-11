@@ -21,6 +21,12 @@
     <string name="camera_recipients_loading">Đang tải bạn bè…</string>
     <string name="camera_recipients_empty">Bạn chưa có bạn bè</string>
     <string name="camera_recipients_error">Không thể tải danh sách bạn bè.</string>
+    <string name="camera_recipients_network_error">Không có kết nối. Vui lòng tải lại danh sách bạn bè.</string>
+    <string name="camera_session_error">Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.</string>
+    <string name="camera_send_error">Không thể gửi khoảnh khắc. Bản nháp vẫn được giữ để bạn thử lại.</string>
+    <string name="camera_send_unconfirmed">Chưa xác nhận được kết quả gửi. Bản nháp vẫn được giữ; gửi lại có thể tạo ảnh trùng.</string>
+    <string name="camera_sent">Đã gửi khoảnh khắc</string>
+    <string name="camera_saved_private">Đã lưu khoảnh khắc riêng tư</string>
     <string name="camera_flash_on">Bật flash</string>
     <string name="camera_flash_off">Tắt flash</string>
     <string name="camera_switch">Đổi camera trước / sau</string>
