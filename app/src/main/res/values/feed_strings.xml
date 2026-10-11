@@ -8,6 +8,13 @@
     <string name="feed_friend_empty_message">Chưa có khoảnh khắc nào từ người bạn này.</string>
     <string name="feed_my_empty_message">Khoảnh khắc bạn đã đăng sẽ xuất hiện ở đây.</string>
     <string name="feed_error">Không thể tải khoảnh khắc. Vui lòng thử lại.</string>
+    <string name="feed_network_error">Không thể kết nối. Kiểm tra mạng và thử lại.</string>
+    <string name="feed_server_error">Máy chủ đang gặp sự cố. Vui lòng thử lại.</string>
+    <string name="feed_session_error">Phiên đăng nhập đã thay đổi hoặc hết hạn. Vui lòng đăng nhập lại.</string>
+    <string name="feed_friends_error">Không thể tải danh sách bạn bè.</string>
+    <string name="feed_friends_network_error">Không thể kết nối để tải danh sách bạn bè.</string>
+    <string name="feed_loading_friends">Đang tải…</string>
+    <string name="feed_friend_unavailable">Người này không còn trong danh sách bạn bè. Đã chuyển về Tất cả.</string>
     <string name="feed_retry">Thử lại</string>
     <string name="feed_image_error">Không thể tải ảnh</string>
     <string name="feed_image_description">Khoảnh khắc của %1$s</string>

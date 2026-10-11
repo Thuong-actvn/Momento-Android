@@ -44,6 +44,7 @@ import com.example.momento.feature.moment.domain.model.AudienceType
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.model.MomentOwner
 import com.example.momento.feature.moment.presentation.components.MOMENT_IMAGE_ASPECT_RATIO
+import com.example.momento.ui.components.MomentoRetryMessage
 import com.example.momento.ui.theme.MomentoTheme
 import java.time.Instant
 
@@ -66,12 +67,16 @@ data class FeedUiState(
     val filter: FeedFilter = FeedFilter.All,
     val isLoading: Boolean = false,
     @param:StringRes val error: Int? = null,
+    val isLoadingFriends: Boolean = false,
+    @param:StringRes val friendsError: Int? = null,
+    @param:StringRes val message: Int? = null,
 )
 
 data class FeedActions(
     val onRetry: () -> Unit = {},
     val onFilterSelected: (FeedFilter) -> Unit = {},
     val onReact: (momentId: String, emoji: String) -> Unit = { _, _ -> },
+    val onRetryFriends: () -> Unit = {},
 )
 
 @Composable
@@ -92,6 +97,19 @@ fun FeedScreen(
                 } else {
                     FeedStatus(state, actions.onRetry)
                 }
+            }
+            if (state.friendsError != null) {
+                MomentoRetryMessage(
+                    message = stringResource(state.friendsError),
+                    actionText = stringResource(
+                        if (state.isLoadingFriends) R.string.feed_loading_friends else R.string.feed_retry,
+                    ),
+                    onRetry = actions.onRetryFriends,
+                    enabled = !state.isLoadingFriends,
+                    modifier = Modifier
+                        .padding(horizontal = 20.dp)
+                        .testTag("feed_friends_error"),
+                )
             }
             FeedFriendFilter(
                 friends = state.friends,
