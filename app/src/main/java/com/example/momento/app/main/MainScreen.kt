@@ -119,7 +119,10 @@ fun MainScreenContent(
                         avatarUrl = avatarUrl,
                         onAvatarClick = onAvatarClick,
                     )
-                    MainTab.CAMERA -> CameraRoute(modifier = Modifier.fillMaxSize(), ownAvatarUrl = avatarUrl)
+                    MainTab.CAMERA -> CameraRoute(
+                        modifier = Modifier.fillMaxSize(),
+                        ownAvatarUrl = avatarUrl,
+                    )
                     MainTab.JOURNAL -> JournalPlaceholder(modifier = Modifier.fillMaxSize())
                 }
             }

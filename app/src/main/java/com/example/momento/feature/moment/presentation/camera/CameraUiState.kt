@@ -5,7 +5,7 @@ import com.example.momento.feature.moment.domain.model.AudienceType
 
 enum class CameraAudience { ALL_FRIENDS, ONLY_ME, SELECTED_FRIENDS }
 
-enum class CameraPreviewStatus { UNAVAILABLE, PERMISSION_REQUIRED, READY, ERROR }
+enum class CameraPreviewStatus { UNAVAILABLE, PERMISSION_REQUIRED, PERMISSION_DENIED, READY, ERROR }
 
 data class CameraRecipient(val id: String, val name: String, val avatarUrl: String? = null)
 
@@ -41,7 +41,7 @@ data class CameraUiState(
     val isLoadingRecipients: Boolean = false,
     val hasLoadedRecipients: Boolean = false,
     @param:StringRes val recipientsError: Int? = null,
-    val previewStatus: CameraPreviewStatus = CameraPreviewStatus.UNAVAILABLE,
+    val previewStatus: CameraPreviewStatus? = null,
     val flashEnabled: Boolean = false,
     val hasFlash: Boolean = false,
     val canSwitchCamera: Boolean = false,
@@ -49,15 +49,13 @@ data class CameraUiState(
     val zoomRatio: Float = 1f,
     val supportedZoomRatios: List<Float> = emptyList(),
     val latestImage: String? = null,
-    val isPreparingImage: Boolean = false,
     val isSending: Boolean = false,
     val canUpload: Boolean = false,
     @param:StringRes val error: Int? = null,
 ) {
     val hasDraft: Boolean get() = draftImage != null
-    val isBusy: Boolean get() = isPreparingImage || isSending
-    val canCapture: Boolean get() = !hasDraft && previewStatus == CameraPreviewStatus.READY && !isBusy
-    val canSend: Boolean get() = hasDraft && selection.isValid && !isBusy && canUpload
+    val canCapture: Boolean get() = !hasDraft && previewStatus == CameraPreviewStatus.READY && !isSending
+    val canSend: Boolean get() = hasDraft && selection.isValid && !isSending && canUpload
 }
 
 const val MOMENT_CAPTION_LIMIT = 40

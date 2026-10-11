@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,9 +23,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.Cameraswitch
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.FlashOff
+import androidx.compose.material.icons.outlined.FlashOn
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Lock
@@ -33,6 +37,7 @@ import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -50,14 +56,88 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.momento.R
 import com.example.momento.ui.components.MomentoAvatar
 import com.example.momento.ui.components.MomentoRetryMessage
+import kotlin.math.abs
+
+@Composable
+internal fun BoxScope.CameraOverlayControls(state: CameraUiState, actions: CameraActions) {
+    val flashLabel = stringResource(if (state.flashEnabled) R.string.camera_flash_off else R.string.camera_flash_on)
+    val lensLabel = stringResource(if (state.isFrontCamera) R.string.camera_front else R.string.camera_back)
+    CameraOverlayButton(
+        icon = if (state.flashEnabled) Icons.Outlined.FlashOn else Icons.Outlined.FlashOff,
+        description = flashLabel,
+        enabled = state.canCapture && state.hasFlash,
+        available = state.hasFlash,
+        onClick = actions.onFlashToggled,
+        modifier = Modifier.align(Alignment.TopStart).padding(12.dp).testTag("camera_flash")
+            .semantics { stateDescription = flashLabel },
+    )
+    CameraOverlayButton(
+        icon = Icons.Outlined.Cameraswitch,
+        description = stringResource(R.string.camera_switch),
+        enabled = state.canCapture && state.canSwitchCamera,
+        available = state.canSwitchCamera,
+        onClick = actions.onCameraSwitched,
+        modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).testTag("camera_switch")
+            .semantics { stateDescription = lensLabel },
+    )
+    CameraZoomSelector(state, actions.onZoomSelected, Modifier.align(Alignment.BottomCenter))
+}
+
+@Composable
+private fun CameraZoomSelector(state: CameraUiState, onZoomSelected: (Float) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.padding(bottom = 16.dp).clip(RoundedCornerShape(30.dp))
+        .background(Color.Black.copy(alpha = 0.24f)).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+        listOf(0.5f, 1f, 2f).forEach { ratio ->
+            val selected = abs(state.zoomRatio - ratio) < 0.01f
+            val supported = ratio in state.supportedZoomRatios
+            val label = when (ratio) { 0.5f -> "0.5x"; 2f -> "2x"; else -> "1x" }
+            val description = stringResource(R.string.camera_zoom, label)
+            Box(Modifier.size(28.dp).clip(CircleShape)
+                .background(if (selected) Color.White.copy(alpha = 0.22f) else Color.Transparent)
+                .selectable(selected, enabled = state.canCapture && supported, role = Role.RadioButton,
+                    onClick = { onZoomSelected(ratio) })
+                .testTag("camera_zoom_$label").semantics { contentDescription = description }, contentAlignment = Alignment.Center) {
+                Text(if (selected) label else label.removeSuffix("x"),
+                    color = Color.White.copy(alpha = if (supported) 1f else 0.4f),
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CameraOverlayButton(
+    icon: ImageVector,
+    description: String,
+    enabled: Boolean,
+    available: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        colors = IconButtonDefaults.iconButtonColors(containerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent),
+        modifier = modifier.size(48.dp),
+    ) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.24f)),
+            contentAlignment = Alignment.Center) {
+            Icon(icon, description, Modifier.size(20.dp),
+                Color.White.copy(alpha = if (available) 1f else 0.4f))
+        }
+    }
+}
 
 @Composable
 internal fun MomentCaption(value: String, onValueChange: (String) -> Unit, enabled: Boolean) {
@@ -144,7 +224,7 @@ internal fun MomentRecipients(
                 RecipientItem(
                     name = stringResource(R.string.camera_audience_all),
                     selected = state.selection.audience == CameraAudience.ALL_FRIENDS,
-                    enabled = !state.isBusy, onClick = { onAudienceSelected(CameraAudience.ALL_FRIENDS) },
+                    enabled = !state.isSending, onClick = { onAudienceSelected(CameraAudience.ALL_FRIENDS) },
                     icon = Icons.Outlined.Groups, tag = "recipient_all",
                 )
             }
@@ -152,7 +232,7 @@ internal fun MomentRecipients(
                 RecipientItem(
                     name = stringResource(R.string.camera_audience_only_me),
                     selected = state.selection.audience == CameraAudience.ONLY_ME,
-                    enabled = !state.isBusy, onClick = { onAudienceSelected(CameraAudience.ONLY_ME) },
+                    enabled = !state.isSending, onClick = { onAudienceSelected(CameraAudience.ONLY_ME) },
                     icon = if (ownAvatarUrl == null) Icons.Outlined.Lock else null,
                     avatarUrl = ownAvatarUrl, tag = "recipient_me",
                 )
@@ -161,7 +241,7 @@ internal fun MomentRecipients(
                 RecipientItem(
                     name = friend.name, avatarUrl = friend.avatarUrl,
                     selected = state.selection.audience == CameraAudience.SELECTED_FRIENDS && friend.id in state.selection.friendIds,
-                    enabled = !state.isBusy, onClick = { onFriendToggled(friend.id) },
+                    enabled = !state.isSending, onClick = { onFriendToggled(friend.id) },
                     tag = "recipient_${friend.id}",
                 )
             }
@@ -176,7 +256,7 @@ internal fun MomentRecipients(
                 message = stringResource(state.recipientsError),
                 actionText = stringResource(R.string.camera_retry),
                 onRetry = onRetry,
-                enabled = !state.isBusy,
+                enabled = !state.isSending,
             )
             state.hasLoadedRecipients && state.recipients.isEmpty() -> Text(
                 stringResource(R.string.camera_recipients_empty), style = MaterialTheme.typography.bodySmall,
@@ -231,7 +311,7 @@ private fun RecipientItem(
 internal fun MomentActionRow(
     hasDraft: Boolean,
     latestImage: String?,
-    isBusy: Boolean,
+    isSending: Boolean,
     actionEnabled: Boolean,
     actionDescription: String,
     onGallery: () -> Unit,
@@ -243,7 +323,7 @@ internal fun MomentActionRow(
     Box(modifier.fillMaxWidth().heightIn(min = 112.dp).testTag("moment_action_row")) {
         Box(Modifier.align(Alignment.CenterStart).size(52.dp).shadow(2.dp, RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerLowest)
-            .clickable(enabled = !isBusy, role = Role.Button, onClick = onGallery)
+            .clickable(enabled = !isSending, role = Role.Button, onClick = onGallery)
             .testTag("moment_open_gallery")
             .semantics { contentDescription = galleryLabel }, contentAlignment = Alignment.Center) {
             if (latestImage != null) AsyncImage(latestImage, null, Modifier.size(52.dp), contentScale = ContentScale.Crop)
@@ -251,13 +331,13 @@ internal fun MomentActionRow(
         }
         MomentPrimaryButton(
             hasDraft = hasDraft,
-            isBusy = isBusy,
+            isSending = isSending,
             enabled = actionEnabled,
             description = actionDescription,
             onClick = onAction,
             modifier = Modifier.align(Alignment.Center),
         )
-        if (hasDraft) IconButton(onDiscard, enabled = !isBusy,
+        if (hasDraft) IconButton(onDiscard, enabled = !isSending,
             modifier = Modifier.align(Alignment.CenterEnd).size(60.dp).testTag("moment_discard")) {
             Icon(Icons.Outlined.Close, stringResource(R.string.camera_discard), Modifier.size(36.dp),
                 MaterialTheme.colorScheme.onSurfaceVariant)
@@ -268,7 +348,7 @@ internal fun MomentActionRow(
 @Composable
 private fun MomentPrimaryButton(
     hasDraft: Boolean,
-    isBusy: Boolean,
+    isSending: Boolean,
     enabled: Boolean,
     description: String,
     onClick: () -> Unit,
@@ -288,7 +368,7 @@ private fun MomentPrimaryButton(
         contentAlignment = Alignment.Center,
     ) {
         when {
-            isBusy -> CircularProgressIndicator(Modifier.size(28.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+            isSending -> CircularProgressIndicator(Modifier.size(28.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
             hasDraft -> Icon(Icons.AutoMirrored.Outlined.Send, null, Modifier.size(34.dp), MaterialTheme.colorScheme.onPrimary)
             else -> Icon(painterResource(R.drawable.ic_main_camera), null, Modifier.size(30.dp), MaterialTheme.colorScheme.onPrimary)
         }

@@ -31,8 +31,12 @@
     <string name="camera_permission_title">Lưu lại khoảnh khắc của bạn</string>
     <string name="camera_permission_message">Cho phép dùng máy ảnh để chụp và chia sẻ ảnh.</string>
     <string name="camera_permission_action">Cho phép máy ảnh</string>
+    <string name="camera_permission_denied">Quyền máy ảnh đã bị từ chối. Bạn có thể bật lại trong cài đặt.</string>
+    <string name="camera_capture_error">Không thể chụp ảnh. Vui lòng thử lại.</string>
+    <string name="camera_image_invalid">Ảnh không hợp lệ. Hãy chọn ảnh JPEG, PNG hoặc WebP.</string>
+    <string name="camera_image_too_large">Ảnh vượt quá 20 MiB. Hãy chọn ảnh nhỏ hơn.</string>
+    <string name="camera_image_read_error">Không thể đọc ảnh. Vui lòng chọn lại.</string>
     <string name="camera_error">Không thể mở máy ảnh</string>
-    <string name="camera_preparing">Đang chuẩn bị ảnh…</string>
     <string name="camera_sending">Đang gửi…</string>
     <string name="camera_image_error">Không thể hiển thị ảnh. Hãy chọn ảnh khác.</string>
     <string name="camera_retry">Thử lại</string>
