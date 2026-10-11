@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -54,12 +55,11 @@ fun FeedTopBar(
         )
         Spacer(modifier = Modifier.width(8.dp))
 
-        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        IconButton(onClick = {}, enabled = false, modifier = Modifier.size(48.dp).testTag("feed_messages")) {
             Icon(
                 painter = painterResource(R.drawable.ic_feed_message),
                 contentDescription = stringResource(R.string.feed_messages),
                 modifier = Modifier.size(22.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(modifier = Modifier.width(4.dp))

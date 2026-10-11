@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -51,7 +52,9 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.example.momento.R
 import com.example.momento.feature.moment.presentation.camera.CameraRoute
+import com.example.momento.feature.moment.presentation.feed.FeedActions
 import com.example.momento.feature.moment.presentation.feed.FeedScreen
+import com.example.momento.feature.moment.presentation.feed.FeedUiState
 import com.example.momento.ui.theme.MomentoTheme
 
 enum class MainTab {
@@ -95,6 +98,8 @@ fun MainScreenContent(
     onAvatarClick: (() -> Unit)? = null,
 ) {
     val tabStateHolder = rememberSaveableStateHolder()
+    // Keep filter selection interactive before FeedRoute is connected in phase 2.
+    var feedState by remember { mutableStateOf(FeedUiState()) }
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -118,6 +123,8 @@ fun MainScreenContent(
                 when (selectedTab) {
                     MainTab.FEED -> FeedScreen(
                         modifier = Modifier.fillMaxSize(),
+                        state = feedState,
+                        actions = FeedActions(onFilterSelected = { feedState = feedState.copy(filter = it) }),
                         avatarUrl = avatarUrl,
                         onAvatarClick = onAvatarClick,
                     )
