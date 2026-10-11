@@ -49,7 +49,7 @@ class CameraViewModel @Inject constructor(
         } else {
             null
         }
-        val caption = if (draftImage != null) savedState.get<String>("caption") ?: "" else ""
+        val caption = savedState.get<String>("caption") ?: ""
 
         val audienceName = savedState.get<String>("audience")
         val audience = if (audienceName == null) {
@@ -130,8 +130,7 @@ class CameraViewModel @Inject constructor(
     }
 
     fun changeCaption(value: String) {
-        val current = _state.value
-        if (!current.hasDraft || current.isSending) return
+        if (_state.value.isSending) return
         val caption = value.limitMomentCaption()
         savedState["caption"] = caption
         _state.update { it.copy(caption = caption) }

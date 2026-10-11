@@ -100,7 +100,7 @@ fun CameraScreen(
                 }
             }
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                MomentCaption(state.caption, actions.onCaptionChanged, enabled = state.hasDraft && !state.isSending)
+                MomentCaption(state.caption, actions.onCaptionChanged, enabled = !state.isSending)
                 DeferredMomentOptions()
                 MomentRecipients(state, ownAvatarUrl, actions.onAudienceSelected, actions.onFriendToggled, actions.onRetryRecipients)
                 state.error?.let {
