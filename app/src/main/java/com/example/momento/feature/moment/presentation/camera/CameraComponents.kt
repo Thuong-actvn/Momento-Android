@@ -306,7 +306,7 @@ private fun RecipientItem(
     }
 }
 
-/** The action is independently centered; neither side control can shift it. */
+/** Equal side button sizes and gaps keep the capture/send button centered. */
 @Composable
 internal fun MomentActionRow(
     hasDraft: Boolean,
@@ -316,12 +316,16 @@ internal fun MomentActionRow(
     actionDescription: String,
     onGallery: () -> Unit,
     onAction: () -> Unit,
-    onDiscard: () -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val galleryLabel = stringResource(R.string.camera_open_gallery)
-    Box(modifier.fillMaxWidth().heightIn(min = 112.dp).testTag("moment_action_row")) {
-        Box(Modifier.align(Alignment.CenterStart).size(52.dp).shadow(2.dp, RoundedCornerShape(16.dp))
+    Row(
+        modifier.fillMaxWidth().heightIn(min = 112.dp).testTag("moment_action_row"),
+        horizontalArrangement = Arrangement.spacedBy(40.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(52.dp).shadow(2.dp, RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerLowest)
             .clickable(enabled = !isSending, role = Role.Button, onClick = onGallery)
             .testTag("moment_open_gallery")
@@ -335,11 +339,11 @@ internal fun MomentActionRow(
             enabled = actionEnabled,
             description = actionDescription,
             onClick = onAction,
-            modifier = Modifier.align(Alignment.Center),
         )
-        if (hasDraft) IconButton(onDiscard, enabled = !isSending,
-            modifier = Modifier.align(Alignment.CenterEnd).size(60.dp).testTag("moment_discard")) {
-            Icon(Icons.Outlined.Close, stringResource(R.string.camera_discard), Modifier.size(36.dp),
+        IconButton(onClose, enabled = !isSending,
+            modifier = Modifier.size(52.dp).testTag("moment_close")) {
+            Icon(Icons.Outlined.Close,
+                stringResource(if (hasDraft) R.string.camera_discard else R.string.camera_close), Modifier.size(36.dp),
                 MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

@@ -39,6 +39,7 @@ import com.example.momento.feature.moment.presentation.gallery.hasPermission
 fun CameraRoute(
     modifier: Modifier = Modifier,
     ownAvatarUrl: String? = null,
+    onClose: () -> Unit = {},
     viewModel: CameraViewModel = hiltViewModel(),
     galleryViewModel: GalleryViewModel = hiltViewModel(),
 ) {
@@ -129,6 +130,7 @@ fun CameraRoute(
                 onCapture = ::captureMoment,
                 onSend = viewModel::sendMoment,
                 onDiscard = viewModel::discardDraft,
+                onClose = onClose,
                 onCaptionChanged = viewModel::changeCaption,
                 onAudienceSelected = viewModel::selectAudience,
                 onFriendToggled = viewModel::toggleFriend,

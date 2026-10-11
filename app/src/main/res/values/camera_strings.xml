@@ -4,6 +4,7 @@
     <string name="camera_send">Gửi khoảnh khắc</string>
     <string name="camera_save_private">Lưu khoảnh khắc riêng</string>
     <string name="camera_discard">Bỏ bản nháp</string>
+    <string name="camera_close">Thoát máy ảnh</string>
     <string name="camera_open_gallery">Chọn ảnh từ thư viện</string>
     <string name="camera_image_description">Ảnh khoảnh khắc</string>
     <string name="camera_note_hint">Thêm ghi chú ngắn…</string>

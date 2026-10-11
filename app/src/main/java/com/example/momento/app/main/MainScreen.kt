@@ -100,10 +100,12 @@ fun MainScreenContent(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
-            MainNavigationBar(
-                selectedTab = selectedTab,
-                onTabSelected = onTabSelected,
-            )
+            if (selectedTab != MainTab.CAMERA) {
+                MainNavigationBar(
+                    selectedTab = selectedTab,
+                    onTabSelected = onTabSelected,
+                )
+            }
         },
     ) { innerPadding ->
         Box(
@@ -122,6 +124,7 @@ fun MainScreenContent(
                     MainTab.CAMERA -> CameraRoute(
                         modifier = Modifier.fillMaxSize(),
                         ownAvatarUrl = avatarUrl,
+                        onClose = { onTabSelected(MainTab.FEED) },
                     )
                     MainTab.JOURNAL -> JournalPlaceholder(modifier = Modifier.fillMaxSize())
                 }

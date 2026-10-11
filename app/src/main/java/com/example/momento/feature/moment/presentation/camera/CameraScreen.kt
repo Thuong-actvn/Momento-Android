@@ -57,6 +57,7 @@ data class CameraActions(
     val onCapture: () -> Unit = {},
     val onSend: () -> Unit = {},
     val onDiscard: () -> Unit = {},
+    val onClose: () -> Unit = {},
     val onGallery: () -> Unit = {},
     val onCaptionChanged: (String) -> Unit = {},
     val onAudienceSelected: (CameraAudience) -> Unit = {},
@@ -123,7 +124,7 @@ fun CameraScreen(
                     }),
                     onGallery = actions.onGallery,
                     onAction = if (state.hasDraft) actions.onSend else actions.onCapture,
-                    onDiscard = actions.onDiscard,
+                    onClose = if (state.hasDraft) actions.onDiscard else actions.onClose,
                 )
             }
             Spacer(Modifier.height(2.dp))
