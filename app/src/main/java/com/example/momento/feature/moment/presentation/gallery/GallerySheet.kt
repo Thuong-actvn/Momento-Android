@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.momento.R
+import com.example.momento.feature.moment.domain.model.GalleryImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -159,14 +160,13 @@ private fun GalleryImageItem(image: GalleryImage, position: Int, selected: Boole
             .then(selectionBorder),
     ) {
         AsyncImage(image.uri, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Box(
+        if (selected) Box(
             Modifier.align(Alignment.TopEnd).padding(7.dp).size(24.dp)
                 .border(2.dp, MaterialTheme.colorScheme.surfaceContainerLowest, CircleShape)
-                .clip(CircleShape).background(if (selected) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.scrim.copy(alpha = 0.18f)),
+                .clip(CircleShape).background(MaterialTheme.colorScheme.primary),
             contentAlignment = Alignment.Center,
         ) {
-            if (selected) Icon(Icons.Outlined.Check, null, Modifier.size(16.dp), MaterialTheme.colorScheme.onPrimary)
+            Icon(Icons.Outlined.Check, null, Modifier.size(16.dp), MaterialTheme.colorScheme.onPrimary)
         }
     }
 }

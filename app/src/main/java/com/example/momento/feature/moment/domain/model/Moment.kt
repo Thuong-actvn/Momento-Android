@@ -26,6 +26,8 @@ data class Moment(
     val createdAt: Instant,
 )
 
+data class GalleryImage(val id: String, val uri: String)
+
 data class CursorPage<T>(
     val data: List<T>,
     val nextCursor: String?,
