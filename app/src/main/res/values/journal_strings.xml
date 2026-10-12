@@ -18,6 +18,12 @@
     <string name="journal_today">Hôm nay, %1$s</string>
     <string name="journal_yesterday">Hôm qua, %1$s</string>
     <string name="journal_earlier_this_week">Đầu tuần này</string>
+    <string name="journal_unknown_date">Chưa rõ thời gian</string>
+    <string name="journal_network_error">Không có kết nối. Vui lòng thử lại.</string>
+    <string name="journal_server_error">Máy chủ đang gặp sự cố. Vui lòng thử lại.</string>
+    <string name="journal_session_error">Phiên đăng nhập đã thay đổi. Vui lòng đăng nhập lại.</string>
+    <string name="journal_friends_error">Chưa tải được tên và ảnh đại diện của bạn bè.</string>
+    <string name="journal_pagination_error">Chưa tải được trang kế tiếp. Vui lòng thử lại.</string>
     <plurals name="journal_moment_count">
         <item quantity="other">%1$d kỷ niệm</item>
     </plurals>

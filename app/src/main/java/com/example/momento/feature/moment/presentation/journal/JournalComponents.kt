@@ -22,8 +22,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -31,6 +33,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.momento.R
 import com.example.momento.feature.moment.domain.model.MomentOwner
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 
 @Composable
 fun JournalTopBar(modifier: Modifier = Modifier) {
@@ -193,4 +200,62 @@ fun journalOwnerName(owner: MomentOwner?): String {
     return owner?.displayName?.takeIf { it.isNotBlank() }
         ?: owner?.username?.takeIf { it.isNotBlank() }
         ?: stringResource(R.string.journal_unknown_owner)
+}
+
+@Composable
+fun journalSections(items: List<JournalItem>): List<JournalSection> {
+    val today = LocalDate.now()
+    val zone = ZoneId.systemDefault()
+    val locale = LocalConfiguration.current.locales[0]
+    val dayFormat = DateTimeFormatter.ofPattern("d/M", locale)
+    val fullDateFormat = DateTimeFormatter.ofPattern("d/M/yyyy", locale)
+    val todayTitle = stringResource(R.string.journal_today, today.format(dayFormat))
+    val yesterdayTitle = stringResource(R.string.journal_yesterday, today.minusDays(1).format(dayFormat))
+    val weekTitle = stringResource(R.string.journal_earlier_this_week)
+    val unknownTitle = stringResource(R.string.journal_unknown_date)
+
+    return remember(items, today, zone, locale, todayTitle, yesterdayTitle, weekTitle, unknownTitle) {
+        groupJournalItemsByTime(items, today, zone).map { (groupId, groupItems) ->
+            val title = when (groupId) {
+                today.toString() -> todayTitle
+                today.minusDays(1).toString() -> yesterdayTitle
+                "earlier_this_week" -> weekTitle
+                "unknown_date" -> unknownTitle
+                else -> {
+                    val date = LocalDate.parse(groupId)
+                    date.format(if (date.year == today.year) dayFormat else fullDateFormat)
+                }
+            }
+            JournalSection(
+                id = groupId,
+                title = title,
+                items = groupItems,
+                highlighted = groupId == today.toString(),
+            )
+        }
+    }
+}
+
+fun groupJournalItemsByTime(
+    items: List<JournalItem>,
+    today: LocalDate,
+    zone: ZoneId,
+): Map<String, List<JournalItem>> {
+    val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    val sortedItems = items
+        .sortedWith(
+            compareByDescending<JournalItem> { it.moment.createdAt }
+                .thenByDescending { it.moment.id },
+        )
+        .distinctBy { it.moment.id }
+
+    return sortedItems.groupBy { item ->
+        val date = item.moment.createdAt?.atZone(zone)?.toLocalDate()
+        when {
+            date == null -> "unknown_date"
+            date == today || date == today.minusDays(1) -> date.toString()
+            date >= weekStart && date < today -> "earlier_this_week"
+            else -> date.toString()
+        }
+    }
 }

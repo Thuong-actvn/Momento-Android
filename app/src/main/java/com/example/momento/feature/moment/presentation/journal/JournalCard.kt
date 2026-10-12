@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -101,17 +100,11 @@ fun JournalCard(
     }
 }
 
-private enum class JournalPhotoStatus {
-    LOADING,
-    SUCCESS,
-    ERROR,
-}
-
 @Composable
 private fun JournalPhoto(imageUrl: String, contentDescription: String) {
     var retryCount by remember(imageUrl) { mutableIntStateOf(0) }
-    var status by remember(imageUrl, retryCount) {
-        mutableStateOf(if (imageUrl.isBlank()) JournalPhotoStatus.ERROR else JournalPhotoStatus.LOADING)
+    var hasError by remember(imageUrl, retryCount) {
+        mutableStateOf(imageUrl.isBlank())
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -120,43 +113,32 @@ private fun JournalPhoto(imageUrl: String, contentDescription: String) {
                 MomentImage(
                     image = imageUrl,
                     contentDescription = contentDescription,
-                    onSuccess = { status = JournalPhotoStatus.SUCCESS },
-                    onError = { status = JournalPhotoStatus.ERROR },
+                    onSuccess = { hasError = false },
+                    onError = { hasError = true },
                 )
             }
         }
 
-        when (status) {
-            JournalPhotoStatus.LOADING -> {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(24.dp),
-                    strokeWidth = 2.dp,
+        if (hasError) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(12.dp)
+                    .testTag("journal_image_error"),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.journal_image_error),
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
                 )
-            }
-            JournalPhotoStatus.ERROR -> {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(12.dp)
-                        .testTag("journal_image_error"),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
+                TextButton(onClick = { retryCount++ }) {
                     Text(
-                        text = stringResource(R.string.journal_image_error),
-                        style = MaterialTheme.typography.bodySmall,
-                        textAlign = TextAlign.Center,
+                        text = stringResource(R.string.journal_retry),
+                        style = MaterialTheme.typography.labelSmall,
                     )
-                    TextButton(onClick = { retryCount++ }) {
-                        Text(
-                            text = stringResource(R.string.journal_retry),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
                 }
             }
-            JournalPhotoStatus.SUCCESS -> Unit
         }
     }
 }
