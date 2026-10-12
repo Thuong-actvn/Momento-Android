@@ -3,8 +3,8 @@ package com.example.momento.app.main
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -133,8 +133,8 @@ fun MainScreenContent(
             if (selectedTab != MainTab.CAMERA) {
                 AnimatedVisibility(
                     visible = selectedTab != MainTab.JOURNAL || journalNavigationVisible,
-                    enter = expandVertically(expandFrom = Alignment.Bottom),
-                    exit = shrinkVertically(shrinkTowards = Alignment.Bottom),
+                    enter = slideInVertically(initialOffsetY = { height -> height }),
+                    exit = slideOutVertically(targetOffsetY = { height -> height }),
                 ) {
                     MainNavigationBar(
                         selectedTab = selectedTab,
