@@ -24,6 +24,24 @@
     <string name="journal_session_error">Phiên đăng nhập đã thay đổi. Vui lòng đăng nhập lại.</string>
     <string name="journal_friends_error">Chưa tải được tên và ảnh đại diện của bạn bè.</string>
     <string name="journal_pagination_error">Chưa tải được trang kế tiếp. Vui lòng thử lại.</string>
+    <string name="journal_detail_title">Kỷ niệm</string>
+    <string name="journal_close_detail">Trở về Journal</string>
+    <string name="journal_audience_all">Chia sẻ với tất cả bạn bè</string>
+    <string name="journal_audience_custom">Chia sẻ tùy chọn</string>
+    <string name="journal_reactions_title">Reaction</string>
+    <string name="journal_view_new_reactions">Xem reaction mới</string>
+    <string name="journal_reactions_explanation">Reaction mới sẽ được đánh dấu đã xem khi mở.</string>
+    <string name="journal_reactions_loading">Đang tải reaction mới…</string>
+    <string name="journal_reactions_empty">Chưa có reaction mới.</string>
+    <string name="journal_reactions_error">Không thể tải reaction mới. Vui lòng thử lại.</string>
+    <string name="journal_delete">Xóa kỷ niệm</string>
+    <string name="journal_delete_title">Xóa kỷ niệm này?</string>
+    <string name="journal_delete_confirmation">Bạn có chắc muốn xóa kỷ niệm này?</string>
+    <string name="journal_deleting">Đang xóa…</string>
+    <string name="journal_cancel">Hủy</string>
+    <string name="journal_delete_error">Không thể xóa kỷ niệm. Vui lòng thử lại.</string>
+    <string name="journal_owner_required">Chỉ chủ ảnh mới có thể thực hiện thao tác này.</string>
+    <string name="journal_photo_unavailable">Kỷ niệm này không còn khả dụng.</string>
     <plurals name="journal_moment_count">
         <item quantity="other">%1$d kỷ niệm</item>
     </plurals>

@@ -1,6 +1,7 @@
 package com.example.momento.feature.moment.presentation.journal
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import java.time.format.DateTimeFormatter
 fun JournalCard(
     item: JournalItem,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
 ) {
     val shape = RoundedCornerShape(20.dp)
     val ownerName = if (item.isOwn) {
@@ -60,6 +62,7 @@ fun JournalCard(
             .shadow(4.dp, shape, ambientColor = Color.Black.copy(alpha = 0.06f))
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .clickable(onClick = onClick)
             .testTag("journal_card_${item.moment.id}"),
     ) {
         JournalPhoto(
@@ -101,7 +104,7 @@ fun JournalCard(
 }
 
 @Composable
-private fun JournalPhoto(imageUrl: String, contentDescription: String) {
+fun JournalPhoto(imageUrl: String, contentDescription: String) {
     var retryCount by remember(imageUrl) { mutableIntStateOf(0) }
     var hasError by remember(imageUrl, retryCount) {
         mutableStateOf(imageUrl.isBlank())

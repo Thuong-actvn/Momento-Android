@@ -45,6 +45,7 @@ fun JournalTimeline(
     state: JournalUiState,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
+    onMomentClick: (JournalItem) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val canLoadMore = state.hasMore && !state.isLoadingMore && !state.isRefreshing &&
@@ -78,6 +79,7 @@ fun JournalTimeline(
                     section = section,
                     canLoadMore = canLoadMore,
                     onLoadMore = onLoadMore,
+                    onMomentClick = onMomentClick,
                 )
             }
         }
@@ -121,6 +123,7 @@ private fun JournalMomentRow(
     section: JournalSection,
     canLoadMore: Boolean,
     onLoadMore: () -> Unit,
+    onMomentClick: (JournalItem) -> Unit,
 ) {
     val rowState = rememberLazyListState()
     val paginationConnection = rememberJournalPaginationConnection(
@@ -167,6 +170,7 @@ private fun JournalMomentRow(
             ) { index, item ->
                 JournalCard(
                     item = item,
+                    onClick = { onMomentClick(item) },
                     modifier = Modifier
                         .width(cardWidth)
                         .graphicsLayer {

@@ -38,6 +38,7 @@ fun JournalScreen(
     onRefresh: () -> Unit = {},
     onLoadMore: () -> Unit = {},
     onRetryFriends: () -> Unit = {},
+    onMomentClick: (JournalItem) -> Unit = {},
 ) {
     val sections = journalSections(state.items)
 
@@ -90,6 +91,7 @@ fun JournalScreen(
                             state = state,
                             onRetry = onRetry,
                             onLoadMore = onLoadMore,
+                            onMomentClick = onMomentClick,
                         )
                     }
                 } else {

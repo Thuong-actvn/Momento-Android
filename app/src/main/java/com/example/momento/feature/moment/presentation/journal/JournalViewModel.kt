@@ -37,6 +37,7 @@ class JournalViewModel @Inject constructor(
     private var friendsJob: Job? = null
     private var ownerId: String? = null
     private val photoLoader = JournalPhotoLoader(moments)
+    private val deletedMomentIds = mutableSetOf<String>()
 
     init {
         viewModelScope.launch {
@@ -47,6 +48,7 @@ class JournalViewModel @Inject constructor(
                     photosJob?.cancel()
                     friendsJob?.cancel()
                     photoLoader.reset()
+                    deletedMomentIds.clear()
                     ownerId = user.id
                     val sameUser = savedState.get<String>("journal_owner") == user.id
                     _state.value = JournalUiState(
@@ -101,6 +103,13 @@ class JournalViewModel @Inject constructor(
         if (!_state.value.isLoadingFriends) loadFriends()
     }
 
+    fun removeMoment(momentId: String) {
+        deletedMomentIds.add(momentId)
+        _state.update { current ->
+            current.copy(items = current.items.filterNot { it.moment.id == momentId })
+        }
+    }
+
     private fun loadPhotos(load: JournalLoad) {
         val userId = userStore.currentUser.value?.id
         if (userId == null) {
@@ -142,7 +151,10 @@ class JournalViewModel @Inject constructor(
             _state.update { current ->
                 JournalStateMapper.photosLoaded(
                     current = current,
-                    result = result,
+                    // A response started before deletion can still contain the deleted photo.
+                    result = result.copy(
+                        moments = result.moments.filterNot { it.id in deletedMomentIds },
+                    ),
                     load = load,
                     user = userStore.currentUser.value,
                 )
@@ -226,6 +238,7 @@ class JournalViewModel @Inject constructor(
         friendsJob?.cancel()
         ownerId = null
         photoLoader.reset()
+        deletedMomentIds.clear()
         savedState["journal_owner"] = null
         savedState["journal_filter"] = "all"
         _state.value = JournalUiState(error = R.string.journal_session_error)
