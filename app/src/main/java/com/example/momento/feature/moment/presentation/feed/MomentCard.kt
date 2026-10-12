@@ -59,6 +59,8 @@ fun MomentCard(
     onReact: (String) -> Unit,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
+    reactionsEnabled: Boolean = true,
+    sentEmoji: String? = null,
 ) {
     val moment = item.moment
     val ownerName = feedOwnerName(item.owner)
@@ -97,6 +99,8 @@ fun MomentCard(
             onShowReactions = onShowReactions,
             onDismissReactions = onDismissReactions,
             onReact = onReact,
+            reactionsEnabled = reactionsEnabled,
+            sentEmoji = sentEmoji,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
@@ -276,6 +280,8 @@ private fun MomentCardFooter(
     onShowReactions: () -> Unit,
     onDismissReactions: () -> Unit,
     onReact: (String) -> Unit,
+    reactionsEnabled: Boolean,
+    sentEmoji: String?,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -307,6 +313,8 @@ private fun MomentCardFooter(
             )
         }
         MomentReactionButton(
+            enabled = reactionsEnabled,
+            sentEmoji = sentEmoji,
             expanded = showReactions,
             onExpand = onShowReactions,
             onDismiss = onDismissReactions,

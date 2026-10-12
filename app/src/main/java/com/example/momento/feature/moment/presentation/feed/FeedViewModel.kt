@@ -38,6 +38,7 @@ class FeedViewModel @Inject constructor(
 
     private var feedJob: Job? = null
     private var friendsJob: Job? = null
+    private var reactionJob: Job? = null
     private var ownerId: String? = null
     private var nextCursor: String? = null
     private val usedCursors = mutableSetOf<String>()
@@ -51,6 +52,7 @@ class FeedViewModel @Inject constructor(
                 } else if (user.id != ownerId) {
                     feedJob?.cancel()
                     friendsJob?.cancel()
+                    reactionJob?.cancel()
                     ownerId = user.id
                     val sameUser = savedState.get<String>("feed_owner") == user.id
                     _state.value = FeedUiState(
@@ -122,8 +124,41 @@ class FeedViewModel @Inject constructor(
         if (!_state.value.isLoadingFriends) loadFriends()
     }
 
-    fun clearMessage() {
-        _state.update { it.copy(message = null) }
+    fun sendReaction(momentId: String, emoji: String) {
+        val current = _state.value
+        if (current.sendingReactionId != null) return
+        if (current.items.none { it.moment.id == momentId }) return
+        if (emoji !in listOf("❤️", "😂", "😍", "😮", "🔥")) return
+        val userId = userStore.currentUser.value?.id
+        if (userId == null) {
+            clearSessionData()
+            return
+        }
+
+        _state.update { it.copy(sendingReactionId = momentId, message = null) }
+        // Feed requests can be canceled independently without canceling or replaying this POST.
+        reactionJob = viewModelScope.launch {
+            val result = moments.reactToMoment(momentId, emoji)
+            currentCoroutineContext().ensureActive()
+            if (userStore.currentUser.value?.id != userId) return@launch
+
+            result.onSuccess {
+                _state.update {
+                    it.copy(
+                        sendingReactionId = null,
+                        sentReactions = it.sentReactions + (momentId to emoji),
+                    )
+                }
+            }.onFailure { error ->
+                showReactionError(error)
+            }
+        }
+    }
+
+    fun clearMessage(message: FeedMessage) {
+        _state.update { current ->
+            if (current.message === message) current.copy(message = null) else current
+        }
     }
 
     private fun loadFeed(load: FeedLoad, cursor: String? = null) {
@@ -323,12 +358,30 @@ class FeedViewModel @Inject constructor(
 
     private fun returnToAll() {
         selectFilter(FeedFilter.All)
-        _state.update { it.copy(message = R.string.feed_friend_unavailable) }
+        _state.update { it.copy(message = FeedMessage(R.string.feed_friend_unavailable)) }
+    }
+
+    private fun showReactionError(error: Throwable) {
+        if (error is CancellationException) throw error
+        val exception = error as? MomentException
+        if (exception?.reason == MomentError.UNAUTHENTICATED || exception?.reason == MomentError.SESSION_CHANGED) {
+            clearSessionData()
+            return
+        }
+        val message = when {
+            exception?.backendCode in listOf("PHOTO_NOT_FOUND", "PHOTO_ACCESS_DENIED") -> {
+                FeedMessage(R.string.feed_reaction_unavailable, canRefresh = true)
+            }
+            exception?.reason == MomentError.REQUEST_FAILED -> FeedMessage(R.string.feed_reaction_error)
+            else -> FeedMessage(R.string.feed_reaction_unconfirmed)
+        }
+        _state.update { it.copy(sendingReactionId = null, message = message) }
     }
 
     private fun clearSessionData() {
         feedJob?.cancel()
         friendsJob?.cancel()
+        reactionJob?.cancel()
         nextCursor = null
         usedCursors.clear()
         savedState["feed_owner"] = null

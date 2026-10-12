@@ -25,6 +25,8 @@ fun FeedPager(
     items: List<FeedItem>,
     initialMomentId: String?,
     actions: FeedActions,
+    reactionsEnabled: Boolean = true,
+    sentReactions: Map<String, String> = emptyMap(),
 ) {
     val currentItems by rememberUpdatedState(items)
     val currentActions by rememberUpdatedState(actions)
@@ -61,6 +63,8 @@ fun FeedPager(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 MomentCard(
                     item = item,
+                    reactionsEnabled = reactionsEnabled,
+                    sentEmoji = sentReactions[item.moment.id],
                     showReactions = reactionMenuId == item.moment.id,
                     onShowReactions = { reactionMenuId = item.moment.id },
                     onDismissReactions = { reactionMenuId = null },

@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,6 +16,7 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.momento.R
 
 @Composable
 fun FeedRoute(
@@ -43,12 +46,20 @@ fun FeedRouteContent(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    val message = state.message?.let { stringResource(it) }
+    val message = state.message
+    val messageText = message?.let { stringResource(it.text) }
+    val refreshLabel = stringResource(R.string.feed_reload)
 
     LaunchedEffect(message) {
-        if (message != null) {
-            snackbar.showSnackbar(message)
-            viewModel.clearMessage()
+        if (message != null && messageText != null) {
+            val result = snackbar.showSnackbar(
+                message = messageText,
+                actionLabel = if (message.canRefresh) refreshLabel else null,
+                withDismissAction = message.canRefresh,
+                duration = if (message.canRefresh) SnackbarDuration.Long else SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) viewModel.refresh()
+            viewModel.clearMessage(message)
         }
     }
 
@@ -64,6 +75,7 @@ fun FeedRouteContent(
                 onLoadMore = viewModel::loadMore,
                 onRetryLoadMore = viewModel::retryLoadMore,
                 onMomentVisible = viewModel::showMoment,
+                onReact = viewModel::sendReaction,
             ),
             avatarUrl = avatarUrl,
             onAvatarClick = onAvatarClick,

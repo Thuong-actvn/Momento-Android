@@ -3,9 +3,9 @@ package com.example.momento.feature.moment.data.remote
 import com.example.momento.core.network.ApiResponse
 import com.example.momento.feature.moment.data.remote.dto.CursorPagedResponsePhotoResponseDto
 import com.example.momento.feature.moment.data.remote.dto.PhotoResponseDto
-import com.example.momento.feature.moment.data.remote.dto.ReactionRequestDto
 import com.example.momento.feature.moment.data.remote.dto.ReactionResponseDto
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -51,7 +51,7 @@ interface MomentApi {
     @POST("photos/{photoId}/reactions")
     suspend fun reactToPhoto(
         @Path("photoId") photoId: String,
-        @Body body: ReactionRequestDto,
+        @Body body: RequestBody,
     ): ApiResponse<Unit>
 
     @POST("photos/{photoId}/reactions/view")

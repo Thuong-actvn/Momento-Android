@@ -77,7 +77,15 @@ data class FeedUiState(
     val pageVersion: Int = 0,
     val isLoadingFriends: Boolean = false,
     @param:StringRes val friendsError: Int? = null,
-    @param:StringRes val message: Int? = null,
+    val sendingReactionId: String? = null,
+    val sentReactions: Map<String, String> = emptyMap(),
+    val message: FeedMessage? = null,
+)
+
+// Each instance represents a new message, even when the same error occurs again.
+class FeedMessage(
+    @param:StringRes val text: Int,
+    val canRefresh: Boolean = false,
 )
 
 data class FeedActions(
@@ -120,6 +128,8 @@ fun FeedScreen(
                             items = state.items,
                             initialMomentId = state.visibleMomentId,
                             actions = actions,
+                            reactionsEnabled = state.sendingReactionId == null,
+                            sentReactions = state.sentReactions,
                         )
                     }
                 } else {

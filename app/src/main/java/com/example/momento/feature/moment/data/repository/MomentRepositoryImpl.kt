@@ -20,11 +20,14 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okio.BufferedSink
 
 @Singleton
@@ -85,12 +88,7 @@ class MomentRepositoryImpl @Inject constructor(
         }
         val body = image.asRequestBody(mimeType.toMediaType())
         // Once any upload body has been sent, a network failure must not replay the POST.
-        val uploadBody = object : RequestBody() {
-            override fun contentType() = body.contentType()
-            override fun contentLength() = body.contentLength()
-            override fun isOneShot() = true
-            override fun writeTo(sink: BufferedSink) = body.writeTo(sink)
-        }
+        val uploadBody = body.oneShot()
         val part = MultipartBody.Part.createFormData("image", "moment.$extension", uploadBody)
         val response = api.uploadPhoto(
             image = part,
@@ -107,7 +105,10 @@ class MomentRepositoryImpl @Inject constructor(
         require(emoji.isNotBlank() && emoji.length <= 10) {
             "Reaction must be nonblank and at most 10 characters"
         }
-        val response = api.reactToPhoto(momentId, ReactionRequestDto(emoji))
+        val body = Json.encodeToString(ReactionRequestDto(emoji))
+            .toRequestBody("application/json; charset=utf-8".toMediaType())
+            .oneShot()
+        val response = api.reactToPhoto(momentId, body)
         // BaseResponse<Void> deliberately omits data on success.
         if (!response.success) {
             throw ApiException(response.error?.code, response.error?.message ?: "Reaction failed")
@@ -170,5 +171,16 @@ class MomentRepositoryImpl @Inject constructor(
         } catch (error: IllegalStateException) {
             throw MomentException(MomentError.SESSION_CHANGED, cause = error)
         }
+    }
+}
+
+// OkHttp must not replay a POST after this body has been sent.
+private fun RequestBody.oneShot(): RequestBody {
+    val body = this
+    return object : RequestBody() {
+        override fun contentType() = body.contentType()
+        override fun contentLength() = body.contentLength()
+        override fun isOneShot() = true
+        override fun writeTo(sink: BufferedSink) = body.writeTo(sink)
     }
 }

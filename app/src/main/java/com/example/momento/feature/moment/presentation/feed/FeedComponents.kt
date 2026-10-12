@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -31,6 +32,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -46,10 +48,17 @@ fun MomentReactionButton(
     onExpand: () -> Unit,
     onDismiss: () -> Unit,
     onReact: (String) -> Unit,
+    enabled: Boolean = true,
+    sentEmoji: String? = null,
 ) {
     val colors = MaterialTheme.colorScheme
-    val description = stringResource(R.string.feed_send_heart)
     val menuLabel = stringResource(R.string.feed_choose_reaction)
+    val description = if (sentEmoji == null) {
+        stringResource(R.string.feed_send_heart)
+    } else {
+        menuLabel
+    }
+    val sentDescription = sentEmoji?.let { stringResource(R.string.feed_reaction_sent, it) }
     val menuOffset = with(LocalDensity.current) { 56.dp.roundToPx() }
 
     Box {
@@ -59,24 +68,40 @@ fun MomentReactionButton(
                 .clip(CircleShape)
                 .background(colors.surfaceContainerLowest)
                 .combinedClickable(
-                    onClick = { onReact("❤️") },
+                    enabled = enabled,
+                    onClick = {
+                        if (sentEmoji == null) {
+                            onReact("❤️")
+                        }
+                    },
                     onLongClick = onExpand,
                     onLongClickLabel = menuLabel,
                     role = Role.Button,
                 )
-                .semantics { contentDescription = description }
+                .semantics {
+                    contentDescription = description
+                    if (sentDescription != null) stateDescription = sentDescription
+                }
                 .testTag("feed_react"),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                imageVector = Icons.Outlined.FavoriteBorder,
-                contentDescription = null,
-                modifier = Modifier.size(25.dp),
-                tint = colors.primary,
-            )
+            if (sentEmoji == null) {
+                Icon(
+                    imageVector = Icons.Outlined.FavoriteBorder,
+                    contentDescription = null,
+                    modifier = Modifier.size(25.dp),
+                    tint = colors.primary.copy(alpha = if (enabled) 1f else 0.38f),
+                )
+            } else {
+                Text(
+                    text = sentEmoji,
+                    fontSize = 24.sp,
+                    modifier = Modifier.alpha(if (enabled) 1f else 0.38f),
+                )
+            }
         }
 
-        if (expanded) {
+        if (expanded && enabled) {
             Popup(
                 alignment = Alignment.BottomCenter,
                 offset = IntOffset(0, -menuOffset),

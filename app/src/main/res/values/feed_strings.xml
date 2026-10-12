@@ -31,6 +31,11 @@
     <string name="feed_send_heart">Gửi trái tim</string>
     <string name="feed_choose_reaction">Chọn cảm xúc</string>
     <string name="feed_send_reaction">Gửi cảm xúc %1$s</string>
+    <string name="feed_reaction_sent">Đã gửi %1$s</string>
+    <string name="feed_reaction_error">Không thể gửi cảm xúc. Vui lòng thử lại.</string>
+    <string name="feed_reaction_unconfirmed">Chưa xác nhận được kết quả gửi cảm xúc. Hãy cân nhắc trước khi gửi lại.</string>
+    <string name="feed_reaction_unavailable">Khoảnh khắc này đã bị xóa hoặc bạn không còn quyền xem. Hãy tải lại feed.</string>
+    <string name="feed_reload">Tải lại feed</string>
     <string name="feed_reply_placeholder">Gửi tin nhắn…</string>
     <string name="feed_reply_disabled">Tin nhắn chưa khả dụng</string>
     <string name="feed_send_message">Gửi tin nhắn</string>
