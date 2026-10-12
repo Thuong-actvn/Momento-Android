@@ -3,6 +3,11 @@
     <string name="feed_open_profile">Xem hồ sơ</string>
     <string name="feed_messages">Tin nhắn</string>
     <string name="feed_loading">Đang tải khoảnh khắc…</string>
+    <string name="feed_loading_more">Đang tải thêm…</string>
+    <string name="feed_load_more">Tải thêm</string>
+    <string name="feed_back_to_top">Về đầu trang</string>
+    <string name="feed_end">Bạn đã xem hết khoảnh khắc</string>
+    <string name="feed_pagination_error">Không thể tải tiếp khoảnh khắc. Vui lòng thử lại.</string>
     <string name="feed_empty_title">Chưa có khoảnh khắc</string>
     <string name="feed_empty_message">Khoảnh khắc được bạn bè chia sẻ sẽ xuất hiện ở đây.</string>
     <string name="feed_friend_empty_message">Chưa có khoảnh khắc nào từ người bạn này.</string>

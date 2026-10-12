@@ -2,24 +2,26 @@ package com.example.momento.feature.moment.presentation.feed
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.pager.VerticalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.VerticalAlignTop
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +45,6 @@ import com.example.momento.R
 import com.example.momento.feature.moment.domain.model.AudienceType
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.model.MomentOwner
-import com.example.momento.feature.moment.presentation.components.MOMENT_IMAGE_ASPECT_RATIO
 import com.example.momento.ui.components.MomentoRetryMessage
 import com.example.momento.ui.theme.MomentoTheme
 import java.time.Instant
@@ -67,6 +68,13 @@ data class FeedUiState(
     val filter: FeedFilter = FeedFilter.All,
     val isLoading: Boolean = false,
     @param:StringRes val error: Int? = null,
+    val isRefreshing: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val hasMore: Boolean = false,
+    @param:StringRes val loadMoreError: Int? = null,
+    val visibleMomentId: String? = null,
+    // Reset the pager only after a new first page succeeds.
+    val pageVersion: Int = 0,
     val isLoadingFriends: Boolean = false,
     @param:StringRes val friendsError: Int? = null,
     @param:StringRes val message: Int? = null,
@@ -77,6 +85,10 @@ data class FeedActions(
     val onFilterSelected: (FeedFilter) -> Unit = {},
     val onReact: (momentId: String, emoji: String) -> Unit = { _, _ -> },
     val onRetryFriends: () -> Unit = {},
+    val onRefresh: () -> Unit = {},
+    val onLoadMore: () -> Unit = {},
+    val onRetryLoadMore: () -> Unit = {},
+    val onMomentVisible: (String) -> Unit = {},
 )
 
 @Composable
@@ -87,16 +99,35 @@ fun FeedScreen(
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
 ) {
-    Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             FeedTopBar(avatarUrl = avatarUrl, onAvatarClick = onAvatarClick)
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
                 if (state.items.isNotEmpty()) {
-                    // Changing the filter starts at the first photo; ordinary recomposition keeps the page.
-                    key(state.filter) { FeedPager(state.items, actions.onReact) }
+                    key(state.filter, state.pageVersion) {
+                        FeedPager(
+                            items = state.items,
+                            initialMomentId = state.visibleMomentId,
+                            actions = actions,
+                        )
+                    }
                 } else {
                     FeedStatus(state, actions.onRetry)
                 }
+            }
+            if (state.items.isNotEmpty()) {
+                FeedPageStatus(state = state, actions = actions)
             }
             if (state.friendsError != null) {
                 MomentoRetryMessage(
@@ -111,45 +142,58 @@ fun FeedScreen(
                         .testTag("feed_friends_error"),
                 )
             }
-            FeedFriendFilter(
-                friends = state.friends,
-                selectedFilter = state.filter,
-                onSelect = actions.onFilterSelected,
-                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+            FeedFilterRow(state = state, actions = actions)
+            DisabledMessageComposer(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
-            DisabledMessageComposer(Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
 
 @Composable
-private fun FeedPager(items: List<FeedItem>, onReact: (String, String) -> Unit) {
-    val pager = rememberPagerState(pageCount = { items.size })
-    var reactionMenuId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(pager.currentPage) { reactionMenuId = null }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        // Fit a 4:5 card into the space left by the fixed header, filter and reply row.
-        val cardWidth = minOf(maxWidth - 40.dp, maxHeight * MOMENT_IMAGE_ASPECT_RATIO)
-        VerticalPager(
-            state = pager,
-            key = { items[it].moment.id },
-            pageSpacing = 16.dp,
-            modifier = Modifier.fillMaxSize().testTag("feed_pager"),
-        ) { page ->
-            val item = items[page]
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                MomentCard(
-                    item = item,
-                    showReactions = reactionMenuId == item.moment.id,
-                    onShowReactions = { reactionMenuId = item.moment.id },
-                    onDismissReactions = { reactionMenuId = null },
-                    onReact = { emoji ->
-                        reactionMenuId = null
-                        onReact(item.moment.id, emoji)
-                    },
-                    modifier = Modifier.width(cardWidth),
-                    compact = cardWidth < 280.dp,
+private fun FeedPageStatus(state: FeedUiState, actions: FeedActions) {
+    when {
+        state.error != null || state.loadMoreError != null -> {
+            val error = state.error ?: state.loadMoreError ?: return
+            MomentoRetryMessage(
+                message = stringResource(error),
+                actionText = stringResource(R.string.feed_retry),
+                onRetry = if (state.error != null) actions.onRefresh else actions.onRetryLoadMore,
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .testTag("feed_page_error"),
+            )
+        }
+        state.isLoadingMore -> {
+            Row(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .testTag("feed_loading_more"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                )
+                Text(
+                    text = stringResource(R.string.feed_loading_more),
+                    modifier = Modifier.padding(start = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+        state.visibleMomentId == state.items.last().moment.id && !state.isRefreshing -> {
+            if (state.hasMore) {
+                TextButton(onClick = actions.onLoadMore) {
+                    Text(stringResource(R.string.feed_load_more))
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.feed_end),
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
@@ -157,35 +201,84 @@ private fun FeedPager(items: List<FeedItem>, onReact: (String, String) -> Unit) 
 }
 
 @Composable
+private fun FeedFilterRow(state: FeedUiState, actions: FeedActions) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Equal space on both sides keeps the filter in the center.
+        Spacer(modifier = Modifier.width(48.dp))
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            FeedFriendFilter(
+                friends = state.friends,
+                selectedFilter = state.filter,
+                onSelect = actions.onFilterSelected,
+            )
+        }
+        IconButton(
+            onClick = actions.onRefresh,
+            enabled = !state.isLoading && !state.isRefreshing,
+            modifier = Modifier
+                .size(48.dp)
+                .testTag("feed_refresh"),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.VerticalAlignTop,
+                contentDescription = stringResource(R.string.feed_back_to_top),
+                modifier = Modifier.size(22.dp),
+            )
+        }
+    }
+}
+
+@Composable
 private fun FeedStatus(state: FeedUiState, onRetry: () -> Unit) {
     Column(
-        Modifier.padding(24.dp).semantics { liveRegion = LiveRegionMode.Polite },
+        modifier = Modifier
+            .padding(24.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         when {
             state.isLoading -> {
-                CircularProgressIndicator(Modifier.testTag("feed_loading"))
-                Text(stringResource(R.string.feed_loading), Modifier.padding(top = 16.dp),
-                    style = MaterialTheme.typography.bodyMedium)
+                CircularProgressIndicator(modifier = Modifier.testTag("feed_loading"))
+                Text(
+                    text = stringResource(R.string.feed_loading),
+                    modifier = Modifier.padding(top = 16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
             state.error != null -> {
-                Text(stringResource(state.error), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+                Text(
+                    text = stringResource(state.error),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
                 TextButton(onClick = onRetry, modifier = Modifier.testTag("feed_retry")) {
                     Text(stringResource(R.string.feed_retry))
                 }
             }
             else -> {
-                Text(stringResource(R.string.feed_empty_title), style = MaterialTheme.typography.headlineSmall,
-                    textAlign = TextAlign.Center)
+                Text(
+                    text = stringResource(R.string.feed_empty_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
+                )
                 val message = when (state.filter) {
                     FeedFilter.All -> R.string.feed_empty_message
                     FeedFilter.OnlyMe -> R.string.feed_my_empty_message
                     is FeedFilter.Friend -> R.string.feed_friend_empty_message
                 }
-                Text(stringResource(message), Modifier.padding(top = 8.dp),
+                Text(
+                    text = stringResource(message),
+                    modifier = Modifier.padding(top = 8.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
