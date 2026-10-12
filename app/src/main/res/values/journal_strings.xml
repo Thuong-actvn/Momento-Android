@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="journal_notifications_unavailable">Thông báo chưa khả dụng</string>
+    <string name="journal_all">Tất cả</string>
+    <string name="journal_my_photos">Ảnh của tôi</string>
+    <string name="journal_you">Bạn</string>
+    <string name="journal_unknown_owner">Bạn bè</string>
+    <string name="journal_own_badge">Của bạn</string>
+    <string name="journal_image_description">Khoảnh khắc của %1$s</string>
+    <string name="journal_image_error">Không thể tải ảnh</string>
+    <string name="journal_loading">Đang tải kỷ niệm…</string>
+    <string name="journal_error">Không thể tải kỷ niệm. Vui lòng thử lại.</string>
+    <string name="journal_retry">Thử lại</string>
+    <string name="journal_empty_title">Chưa có kỷ niệm</string>
+    <string name="journal_empty_message">Khoảnh khắc của bạn và bạn bè sẽ xuất hiện ở đây.</string>
+    <string name="journal_my_empty_message">Khoảnh khắc bạn đã đăng hoặc lưu riêng sẽ xuất hiện ở đây.</string>
+    <string name="journal_friend_empty_message">Chưa có khoảnh khắc nào từ người bạn này.</string>
+    <string name="journal_today">Hôm nay, %1$s</string>
+    <string name="journal_yesterday">Hôm qua, %1$s</string>
+    <string name="journal_earlier_this_week">Đầu tuần này</string>
+    <plurals name="journal_moment_count">
+        <item quantity="other">%1$d kỷ niệm</item>
+    </plurals>
+</resources>

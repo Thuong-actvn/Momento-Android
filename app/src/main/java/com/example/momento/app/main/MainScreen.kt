@@ -2,6 +2,9 @@ package com.example.momento.app.main
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -39,7 +43,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -52,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import com.example.momento.R
 import com.example.momento.feature.moment.presentation.camera.CameraRoute
 import com.example.momento.feature.moment.presentation.feed.FeedRoute
+import com.example.momento.feature.moment.presentation.journal.JournalRoute
 import com.example.momento.ui.theme.MomentoTheme
 
 enum class MainTab {
@@ -95,16 +104,41 @@ fun MainScreenContent(
     onAvatarClick: (() -> Unit)? = null,
 ) {
     val tabStateHolder = rememberSaveableStateHolder()
+    var journalNavigationVisible by remember(selectedTab) { mutableStateOf(true) }
+    val journalScrollConnection = remember(selectedTab) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                // Only actual vertical scrolling changes the navigation bar.
+                if (consumed.y < 0f) {
+                    journalNavigationVisible = false
+                } else if (consumed.y > 0f) {
+                    journalNavigationVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
             if (selectedTab != MainTab.CAMERA) {
-                MainNavigationBar(
-                    selectedTab = selectedTab,
-                    onTabSelected = onTabSelected,
-                )
+                AnimatedVisibility(
+                    visible = selectedTab != MainTab.JOURNAL || journalNavigationVisible,
+                    enter = expandVertically(expandFrom = Alignment.Bottom),
+                    exit = shrinkVertically(shrinkTowards = Alignment.Bottom),
+                ) {
+                    MainNavigationBar(
+                        selectedTab = selectedTab,
+                        onTabSelected = onTabSelected,
+                    )
+                }
             }
         },
     ) { innerPadding ->
@@ -126,7 +160,11 @@ fun MainScreenContent(
                         ownAvatarUrl = avatarUrl,
                         onClose = { onTabSelected(MainTab.FEED) },
                     )
-                    MainTab.JOURNAL -> JournalPlaceholder(modifier = Modifier.fillMaxSize())
+                    MainTab.JOURNAL -> JournalRoute(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .nestedScroll(journalScrollConnection),
+                    )
                 }
             }
         }
@@ -271,26 +309,6 @@ private fun LabeledTab(
     }
 }
 
-@Composable
-private fun JournalPlaceholder(modifier: Modifier = Modifier) {
-    TabPlaceholder(
-        title = stringResource(R.string.main_journal_placeholder),
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun TabPlaceholder(title: String, modifier: Modifier = Modifier) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Text(
-            text = title,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
 @Preview(showSystemUi = true)
 @Composable
 private fun MainFeedPreview() {
@@ -298,6 +316,12 @@ private fun MainFeedPreview() {
     MomentoTheme(darkTheme = false, dynamicColor = false) {
         MainScreen(onExit = { activity?.finish() })
     }
+}
+
+@Preview(name = "Journal tab", showSystemUi = true)
+@Composable
+private fun MainJournalPreview() {
+    MainPreview(MainTab.JOURNAL)
 }
 
 @Composable
