@@ -66,7 +66,7 @@ fun MomentReactionButton(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(colors.surfaceContainerLowest)
+                .background(colors.background)
                 .combinedClickable(
                     enabled = enabled,
                     onClick = {

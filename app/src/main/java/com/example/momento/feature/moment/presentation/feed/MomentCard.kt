@@ -191,7 +191,7 @@ private fun MomentCardHeader(
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(colors.surfaceContainerLowest.copy(alpha = 0.9f))
+                .background(colors.background)
                 .semantics { disabled() }
                 .testTag("feed_audio"),
             contentAlignment = Alignment.Center,
@@ -219,7 +219,7 @@ private fun MomentOwnerBadge(
         modifier = Modifier
             .testTag("feed_owner_badge")
             .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f))
+            .background(MaterialTheme.colorScheme.background)
             .padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp),
