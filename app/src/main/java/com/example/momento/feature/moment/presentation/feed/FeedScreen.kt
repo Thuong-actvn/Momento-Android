@@ -49,6 +49,9 @@ import com.example.momento.ui.components.MomentoRetryMessage
 import com.example.momento.ui.theme.MomentoTheme
 import java.time.Instant
 
+const val FEED_HEART_EMOJI = "💛"
+val feedReactionEmojis = listOf(FEED_HEART_EMOJI, "😂", "😍", "😮", "🔥")
+
 data class FeedItem(
     val moment: Moment,
     val owner: MomentOwner? = null,

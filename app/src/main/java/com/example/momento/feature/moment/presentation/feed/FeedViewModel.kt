@@ -128,7 +128,7 @@ class FeedViewModel @Inject constructor(
         val current = _state.value
         if (current.sendingReactionId != null) return
         if (current.items.none { it.moment.id == momentId }) return
-        if (emoji !in listOf("❤️", "😂", "😍", "😮", "🔥")) return
+        if (emoji !in feedReactionEmojis) return
         val userId = userStore.currentUser.value?.id
         if (userId == null) {
             clearSessionData()

@@ -59,19 +59,19 @@ fun MomentReactionButton(
         menuLabel
     }
     val sentDescription = sentEmoji?.let { stringResource(R.string.feed_reaction_sent, it) }
-    val menuOffset = with(LocalDensity.current) { 56.dp.roundToPx() }
+    val menuOffset = with(LocalDensity.current) { 52.dp.roundToPx() }
 
     Box {
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(44.dp)
                 .clip(CircleShape)
                 .background(colors.surfaceContainerLowest)
                 .combinedClickable(
                     enabled = enabled,
                     onClick = {
                         if (sentEmoji == null) {
-                            onReact("❤️")
+                            onReact(FEED_HEART_EMOJI)
                         }
                     },
                     onLongClick = onExpand,
@@ -89,13 +89,13 @@ fun MomentReactionButton(
                 Icon(
                     imageVector = Icons.Outlined.FavoriteBorder,
                     contentDescription = null,
-                    modifier = Modifier.size(25.dp),
+                    modifier = Modifier.size(22.dp),
                     tint = colors.primary.copy(alpha = if (enabled) 1f else 0.38f),
                 )
             } else {
                 Text(
                     text = sentEmoji,
-                    fontSize = 24.sp,
+                    fontSize = 22.sp,
                     modifier = Modifier.alpha(if (enabled) 1f else 0.38f),
                 )
             }
@@ -116,10 +116,8 @@ fun MomentReactionButton(
 
 @Composable
 private fun MomentReactionMenu(onReact: (String) -> Unit) {
-    val emojis = listOf("❤️", "😂", "😍", "😮", "🔥")
-
     Surface(
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(26.dp),
         shadowElevation = 8.dp,
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
@@ -128,12 +126,12 @@ private fun MomentReactionMenu(onReact: (String) -> Unit) {
                 .padding(4.dp)
                 .testTag("feed_reaction_menu"),
         ) {
-            for (emoji in emojis) {
+            for (emoji in feedReactionEmojis) {
                 val description = stringResource(R.string.feed_send_reaction, emoji)
 
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .clickable(
                             onClick = { onReact(emoji) },
@@ -144,7 +142,7 @@ private fun MomentReactionMenu(onReact: (String) -> Unit) {
                 ) {
                     Text(
                         text = emoji,
-                        fontSize = 24.sp,
+                        fontSize = 22.sp,
                     )
                 }
             }
