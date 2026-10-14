@@ -11,3 +11,11 @@ import kotlinx.serialization.Serializable
 @Serializable data object EditProfile
 
 @Serializable data object Friends
+
+@Serializable
+data object ChatList
+
+@Serializable
+data class ChatThread(
+    val otherUserId: String,
+)

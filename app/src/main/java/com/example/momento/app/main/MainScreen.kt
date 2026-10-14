@@ -77,6 +77,7 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
+    onMessagesClick: (() -> Unit)? = null,
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.FEED) }
 
@@ -94,6 +95,7 @@ fun MainScreen(
         modifier = modifier,
         avatarUrl = avatarUrl,
         onAvatarClick = onAvatarClick,
+        onMessagesClick = onMessagesClick,
     )
 }
 
@@ -104,6 +106,7 @@ fun MainScreenContent(
     modifier: Modifier = Modifier,
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
+    onMessagesClick: (() -> Unit)? = null,
 ) {
     val tabStateHolder = rememberSaveableStateHolder()
     var journalNavigationVisible by remember(selectedTab) { mutableStateOf(true) }
@@ -156,6 +159,7 @@ fun MainScreenContent(
                         modifier = Modifier.fillMaxSize(),
                         avatarUrl = avatarUrl,
                         onAvatarClick = onAvatarClick,
+                        onMessagesClick = onMessagesClick,
                     )
                     MainTab.CAMERA -> CameraRoute(
                         modifier = Modifier.fillMaxSize(),

@@ -23,16 +23,23 @@ fun FeedRoute(
     modifier: Modifier = Modifier,
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
+    onMessagesClick: (() -> Unit)? = null,
 ) {
     // Android Studio previews have no Hilt owner or signed-in session.
     if (LocalInspectionMode.current) {
-        FeedScreen(modifier = modifier, avatarUrl = avatarUrl, onAvatarClick = onAvatarClick)
+        FeedScreen(
+            modifier = modifier,
+            avatarUrl = avatarUrl,
+            onAvatarClick = onAvatarClick,
+            onMessagesClick = onMessagesClick,
+        )
     } else {
         FeedRouteContent(
             viewModel = hiltViewModel(),
             modifier = modifier,
             avatarUrl = avatarUrl,
             onAvatarClick = onAvatarClick,
+            onMessagesClick = onMessagesClick,
         )
     }
 }
@@ -43,6 +50,7 @@ fun FeedRouteContent(
     modifier: Modifier = Modifier,
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
+    onMessagesClick: (() -> Unit)? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -79,6 +87,7 @@ fun FeedRouteContent(
             ),
             avatarUrl = avatarUrl,
             onAvatarClick = onAvatarClick,
+            onMessagesClick = onMessagesClick,
         )
         SnackbarHost(
             hostState = snackbar,

@@ -109,6 +109,7 @@ fun FeedScreen(
     actions: FeedActions = FeedActions(),
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
+    onMessagesClick: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -118,7 +119,11 @@ fun FeedScreen(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            FeedTopBar(avatarUrl = avatarUrl, onAvatarClick = onAvatarClick)
+            FeedTopBar(
+                avatarUrl = avatarUrl,
+                onAvatarClick = onAvatarClick,
+                onMessagesClick = onMessagesClick,
+            )
             Box(
                 modifier = Modifier
                     .weight(1f)

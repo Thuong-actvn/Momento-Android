@@ -11,6 +11,7 @@ fun MainRoute(
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
     onAvatarClick: (() -> Unit)? = null,
+    onMessagesClick: (() -> Unit)? = null,
     viewModel: MainViewModel = hiltViewModel(),
 ) {
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
@@ -20,5 +21,6 @@ fun MainRoute(
         modifier = modifier,
         avatarUrl = currentUser?.avatarUrl,
         onAvatarClick = onAvatarClick,
+        onMessagesClick = onMessagesClick,
     )
 }

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="chat_title">Tin nhắn</string>
+    <string name="chat_back">Quay lại</string>
+    <string name="chat_search_placeholder">Tìm kiếm cuộc trò chuyện…</string>
+    <string name="chat_search_clear">Xóa tìm kiếm</string>
+    <string name="chat_start_conversation">Bắt đầu trò chuyện</string>
+    <string name="chat_unknown_user">Người dùng</string>
+    <string name="chat_yesterday">Hôm qua</string>
+    <string name="chat_loading">Đang tải tin nhắn…</string>
+    <string name="chat_empty_title">Chưa có cuộc trò chuyện</string>
+    <string name="chat_empty_description">Bạn bè của bạn sẽ xuất hiện ở đây để bắt đầu trò chuyện.</string>
+    <string name="chat_search_empty_title">Không tìm thấy cuộc trò chuyện</string>
+    <string name="chat_search_empty_description">Thử tìm bằng tên hoặc tên người dùng khác.</string>
+    <string name="chat_retry">Thử lại</string>
+    <string name="chat_friends_error">Không thể tải danh sách bạn bè.</string>
+    <string name="chat_friends_network_error">Không thể tải bạn bè. Hãy kiểm tra kết nối mạng.</string>
+    <string name="chat_conversations_error">Không thể tải các cuộc trò chuyện.</string>
+    <string name="chat_conversations_network_error">Không thể tải cuộc trò chuyện. Hãy kiểm tra kết nối mạng.</string>
+    <string name="chat_invalid_response">Dữ liệu cuộc trò chuyện chưa hợp lệ. Vui lòng thử lại.</string>
+    <string name="chat_session_error">Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.</string>
+    <string name="chat_thread_placeholder">Chức năng nhắn tin sẽ sớm có mặt.</string>
+</resources>

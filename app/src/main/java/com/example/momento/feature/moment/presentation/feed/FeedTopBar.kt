@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ fun FeedTopBar(
     modifier: Modifier = Modifier,
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
+    onMessagesClick: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -55,7 +57,18 @@ fun FeedTopBar(
         )
         Spacer(modifier = Modifier.width(8.dp))
 
-        IconButton(onClick = {}, enabled = false, modifier = Modifier.size(48.dp).testTag("feed_messages")) {
+        IconButton(
+            onClick = {
+                onMessagesClick?.invoke()
+            },
+            enabled = onMessagesClick != null,
+            colors = IconButtonDefaults.iconButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+            modifier = Modifier
+                .size(48.dp)
+                .testTag("feed_messages"),
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_feed_message),
                 contentDescription = stringResource(R.string.feed_messages),
