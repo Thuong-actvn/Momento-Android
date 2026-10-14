@@ -2,11 +2,14 @@ package com.example.momento.feature.moment.presentation.camera
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
+import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.CameraState
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ZoomState
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
@@ -47,6 +50,7 @@ internal data class CameraControls(
 /** A screen-owned CameraX session. Camera hardware stays outside the ViewModel. */
 internal class CameraSession(context: Context) {
     private val executor = ContextCompat.getMainExecutor(context)
+    private val cameraProvider = ProcessCameraProvider.getInstance(context.applicationContext)
     private val controller = LifecycleCameraController(context.applicationContext).apply {
         setEnabledUseCases(CameraController.IMAGE_CAPTURE)
         imageCaptureMode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
@@ -60,6 +64,10 @@ internal class CameraSession(context: Context) {
     private var lifecycleOwner: LifecycleOwner? = null
     private var removeObservers: () -> Unit = {}
     private var generation = 0
+    private var zoomRequest = 0
+    private var lenses: List<CameraInfo> = emptyList()
+    private var zoomOptions: List<CameraZoomOption> = emptyList()
+    private var activeZoomOption: CameraZoomOption? = null
 
     fun attach(view: PreviewView, owner: LifecycleOwner) {
         detach()
@@ -72,18 +80,20 @@ internal class CameraSession(context: Context) {
             if (attachment != generation) return@addListener
             try {
                 initialization.get()
-                if (!selectAvailableCamera()) return@addListener
+                if (!selectAvailableCamera(cameraProvider.get())) return@addListener
                 view.controller = controller
                 controller.bindToLifecycle(owner)
                 updateFlash()
                 observeCamera(view, owner)
-            } catch (_: Exception) {
+                activeZoomOption?.let { applyZoom(it.cameraZoomRatio) }
+            } catch (exception: Exception) {
+                Log.e("CameraSession", "Unable to attach camera", exception)
                 controls = controls.copy(status = CameraPreviewStatus.ERROR)
             }
         }, executor)
     }
 
-    private fun selectAvailableCamera(): Boolean {
+    private fun selectAvailableCamera(provider: ProcessCameraProvider): Boolean {
         val hasBack = controller.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)
         val hasFront = controller.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
         if (!hasBack && !hasFront) {
@@ -91,16 +101,23 @@ internal class CameraSession(context: Context) {
             return false
         }
         val useFront = !hasBack || (controls.isFrontCamera && hasFront)
-        controller.cameraSelector = if (useFront) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
-        controls = controls.copy(isFrontCamera = useFront, canSwitchCamera = hasBack && hasFront)
+        val selector = if (useFront) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
+        lenses = selector.filter(provider.availableCameraInfos)
+        zoomOptions = cameraZoomOptions(lenses.map { info ->
+            val zoom = info.zoomState.value
+            CameraLensZoom(info.intrinsicZoomRatio, zoom?.minZoomRatio ?: 1f, zoom?.maxZoomRatio ?: 1f)
+        })
+        activeZoomOption = zoomOptions.firstOrNull { it.displayRatio == 1f }
+        controller.cameraSelector = selector
+        controls = controls.copy(isFrontCamera = useFront, canSwitchCamera = hasBack && hasFront,
+            zoomRatio = 1f, supportedZoomRatios = zoomOptions.map { it.displayRatio })
         return true
     }
 
     private fun observeCamera(view: PreviewView, owner: LifecycleOwner) {
         val cameraState = controller.cameraInfo?.cameraState
         val zoomObserver = Observer<ZoomState> { zoom ->
-            val supportedRatios = listOf(0.5f, 1f, 2f).filter { it in zoom.minZoomRatio..zoom.maxZoomRatio }
-            controls = controls.copy(zoomRatio = zoom.zoomRatio, supportedZoomRatios = supportedRatios)
+            controls = controls.copy(zoomRatio = activeZoomOption?.displayZoomRatio(zoom.zoomRatio) ?: zoom.zoomRatio)
         }
         val streamObserver = Observer<PreviewView.StreamState> { updatePreviewStatus() }
         val cameraObserver = Observer<CameraState> { updatePreviewStatus() }
@@ -134,7 +151,10 @@ internal class CameraSession(context: Context) {
         preview?.controller = null
         preview = null
         lifecycleOwner = null
-        controls = controls.copy(status = null)
+        lenses = emptyList()
+        zoomOptions = emptyList()
+        activeZoomOption = null
+        controls = controls.copy(status = null, zoomRatio = 1f, supportedZoomRatios = emptyList())
         clearCapturedPreview()
     }
 
@@ -159,9 +179,41 @@ internal class CameraSession(context: Context) {
     }
 
     fun selectZoom(ratio: Float) {
-        if (ratio !in controls.supportedZoomRatios || capturedPreview != null) return
+        if (controls.status != CameraPreviewStatus.READY || capturedPreview != null) return
+        val option = zoomOptions.firstOrNull { it.displayRatio == ratio } ?: return
+        val view = preview ?: return
+        val owner = lifecycleOwner ?: return
+        val previousLens = activeZoomOption?.lensIndex ?: 0
+        // Rebinding can cancel an older zoom before the new camera control is available.
+        zoomRequest++
+        activeZoomOption = option
+        try {
+            if (option.lensIndex != previousLens) {
+                removeObservers()
+                removeObservers = {}
+                controls = controls.copy(status = null)
+                controller.cameraSelector = lenses[option.lensIndex].cameraSelector
+                updateFlash()
+                observeCamera(view, owner)
+            }
+            applyZoom(option.cameraZoomRatio)
+        } catch (exception: Exception) {
+            Log.e("CameraSession", "Unable to select zoom $ratio", exception)
+            controls = controls.copy(status = CameraPreviewStatus.ERROR)
+        }
+    }
+
+    private fun applyZoom(ratio: Float) {
+        val attachment = generation
+        val request = ++zoomRequest
         val future = controller.setZoomRatio(ratio)
-        future.addListener({ runCatching { future.get() } }, executor)
+        future.addListener({
+            if (attachment != generation || request != zoomRequest) return@addListener
+            runCatching { future.get() }.onFailure { exception ->
+                Log.e("CameraSession", "Unable to apply camera zoom $ratio", exception)
+                controls = controls.copy(status = CameraPreviewStatus.ERROR)
+            }
+        }, executor)
     }
 
     fun capture(file: File, onSuccess: (File) -> Unit, onError: () -> Unit) {
