@@ -12,6 +12,10 @@ class CurrentUserStore @Inject constructor() {
     private val _currentUser = MutableStateFlow<CurrentUser?>(null)
     val currentUser = _currentUser.asStateFlow()
     private var generation = 0L
+    private val _sessionVersion = MutableStateFlow(generation)
+
+    /** Changes even when the same account signs out and immediately signs in again. */
+    val sessionVersion = _sessionVersion.asStateFlow()
 
     class Session internal constructor(
         internal val generation: Long,
@@ -35,6 +39,13 @@ class CurrentUserStore @Inject constructor() {
         check(session.generation == generation) { "User session has changed" }
     }
 
+    /** Publish session-owned state atomically with respect to sign-out. Never suspend here. */
+    @Synchronized
+    fun <T> withSession(session: Session, block: () -> T): T {
+        checkSession(session)
+        return block()
+    }
+
     @Synchronized
     fun update(session: Session, user: CurrentUser) {
         checkSession(session)
@@ -47,6 +58,7 @@ class CurrentUserStore @Inject constructor() {
     @Synchronized
     fun clear() {
         generation++
+        _sessionVersion.value = generation
         _currentUser.value = null
     }
 }
