@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -42,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.shadow
@@ -78,6 +80,7 @@ fun MainScreen(
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
     onMessagesClick: (() -> Unit)? = null,
+    onOpenConversation: ((String) -> Unit)? = null,
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.FEED) }
 
@@ -96,6 +99,7 @@ fun MainScreen(
         avatarUrl = avatarUrl,
         onAvatarClick = onAvatarClick,
         onMessagesClick = onMessagesClick,
+        onOpenConversation = onOpenConversation,
     )
 }
 
@@ -107,9 +111,11 @@ fun MainScreenContent(
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
     onMessagesClick: (() -> Unit)? = null,
+    onOpenConversation: ((String) -> Unit)? = null,
 ) {
     val tabStateHolder = rememberSaveableStateHolder()
     var journalNavigationVisible by remember(selectedTab) { mutableStateOf(true) }
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val journalScrollConnection = remember(selectedTab) {
         object : NestedScrollConnection {
             override fun onPostScroll(
@@ -133,7 +139,7 @@ fun MainScreenContent(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
-            if (selectedTab != MainTab.CAMERA) {
+            if (selectedTab != MainTab.CAMERA && !keyboardVisible) {
                 AnimatedVisibility(
                     visible = selectedTab != MainTab.JOURNAL || journalNavigationVisible,
                     enter = slideInVertically(initialOffsetY = { height -> height }),
@@ -160,6 +166,7 @@ fun MainScreenContent(
                         avatarUrl = avatarUrl,
                         onAvatarClick = onAvatarClick,
                         onMessagesClick = onMessagesClick,
+                        onOpenConversation = onOpenConversation,
                     )
                     MainTab.CAMERA -> CameraRoute(
                         modifier = Modifier.fillMaxSize(),

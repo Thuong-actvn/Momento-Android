@@ -68,6 +68,11 @@ fun AppNavHost(
                             launchSingleTop = true
                         }
                     },
+                    onOpenConversation = { userId ->
+                        navController.navigate(ChatDetail(otherUserId = userId)) {
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
             composable<Profile> {
@@ -93,7 +98,9 @@ fun AppNavHost(
             composable<Friends> {
                 FriendRoute(onBack = onBack)
             }
-            composable<ChatList> {
+            composable<ChatList> { entry ->
+                val mainEntry = remember(entry) { navController.getBackStackEntry<MainGraph>() }
+                val listViewModel = hiltViewModel<ChatListViewModel>(mainEntry)
                 ChatListRoute(
                     onBack = onBack,
                     onOpenConversation = { userId ->
@@ -101,16 +108,15 @@ fun AppNavHost(
                             launchSingleTop = true
                         }
                     },
+                    viewModel = listViewModel,
                 )
             }
             composable<ChatDetail> { entry ->
                 val chatRoute = entry.toRoute<ChatDetail>()
 
-                // Header dùng tên/avatar từ danh sách; tin nhắn có ViewModel riêng theo entry.
-                val listBackStackEntry = remember(entry) {
-                    navController.getBackStackEntry<ChatList>()
-                }
-                val chatListViewModel = hiltViewModel<ChatListViewModel>(listBackStackEntry)
+                // Cùng nguồn tên/avatar khi mở từ danh sách hoặc trực tiếp từ feed.
+                val mainEntry = remember(entry) { navController.getBackStackEntry<MainGraph>() }
+                val chatListViewModel = hiltViewModel<ChatListViewModel>(mainEntry)
 
                 ChatDetailRoute(
                     otherUserId = chatRoute.otherUserId,

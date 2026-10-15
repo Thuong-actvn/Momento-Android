@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,6 +43,8 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import com.example.momento.R
+import com.example.momento.feature.chat.presentation.reply.MomentReplyComposer
+import com.example.momento.feature.chat.presentation.reply.MomentReplyUiState
 import com.example.momento.feature.moment.domain.model.AudienceType
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.model.MomentOwner
@@ -83,7 +86,10 @@ data class FeedUiState(
     val sendingReactionId: String? = null,
     val sentReactions: Map<String, String> = emptyMap(),
     val message: FeedMessage? = null,
-)
+) {
+    val currentMoment: Moment?
+        get() = items.find { it.moment.id == visibleMomentId }?.moment ?: items.firstOrNull()?.moment
+}
 
 // Each instance represents a new message, even when the same error occurs again.
 class FeedMessage(
@@ -100,6 +106,9 @@ data class FeedActions(
     val onLoadMore: () -> Unit = {},
     val onRetryLoadMore: () -> Unit = {},
     val onMomentVisible: (String) -> Unit = {},
+    val onReplyChange: (photoId: String, draft: String) -> Unit = { _, _ -> },
+    val onSendReply: (photoId: String) -> Unit = {},
+    val onCheckReply: (photoId: String) -> Unit = {},
 )
 
 @Composable
@@ -110,9 +119,10 @@ fun FeedScreen(
     avatarUrl: String? = null,
     onAvatarClick: (() -> Unit)? = null,
     onMessagesClick: (() -> Unit)? = null,
+    replyState: MomentReplyUiState = MomentReplyUiState(),
 ) {
     Surface(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().imePadding(),
         color = MaterialTheme.colorScheme.background,
     ) {
         Column(
@@ -161,7 +171,12 @@ fun FeedScreen(
                 )
             }
             FeedFilterRow(state = state, actions = actions)
-            DisabledMessageComposer(
+            val photoId = state.currentMoment?.id
+            MomentReplyComposer(
+                state = if (replyState.photoId == photoId) replyState else MomentReplyUiState(),
+                onDraftChange = { draft -> photoId?.let { actions.onReplyChange(it, draft) } },
+                onSend = { photoId?.let(actions.onSendReply) },
+                onCheckDelivery = { photoId?.let(actions.onCheckReply) },
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             Spacer(modifier = Modifier.height(8.dp))
