@@ -53,14 +53,16 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun MomentCard(
     item: FeedItem,
-    showReactions: Boolean,
-    onShowReactions: () -> Unit,
-    onDismissReactions: () -> Unit,
-    onReact: (String) -> Unit,
     modifier: Modifier = Modifier,
+    showReactions: Boolean = false,
+    onShowReactions: () -> Unit = {},
+    onDismissReactions: () -> Unit = {},
+    onReact: (String) -> Unit = {},
     compact: Boolean = false,
     reactionsEnabled: Boolean = true,
     sentEmoji: String? = null,
+    reactionsVisible: Boolean = true,
+    showOwner: Boolean = true,
 ) {
     val moment = item.moment
     val ownerName = feedOwnerName(item.owner)
@@ -71,7 +73,11 @@ fun MomentCard(
         FeedPhoto(
             momentId = moment.id,
             imageUrl = moment.imageUrl,
-            contentDescription = stringResource(R.string.feed_image_description, ownerName),
+            contentDescription = if (showOwner) {
+                stringResource(R.string.feed_image_description, ownerName)
+            } else {
+                stringResource(R.string.feed_image_only_description)
+            },
         )
 
         Box(
@@ -90,6 +96,7 @@ fun MomentCard(
             owner = item.owner,
             createdAt = moment.createdAt,
             compact = compact,
+            showOwner = showOwner,
             modifier = Modifier.align(Alignment.TopCenter),
         )
         MomentCardFooter(
@@ -101,6 +108,7 @@ fun MomentCard(
             onReact = onReact,
             reactionsEnabled = reactionsEnabled,
             sentEmoji = sentEmoji,
+            reactionsVisible = reactionsVisible,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
@@ -149,6 +157,7 @@ private fun FeedPhoto(
                 ) {
                     Text(
                         text = stringResource(R.string.feed_image_error),
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodySmall,
                     )
                     TextButton(
@@ -169,6 +178,7 @@ private fun MomentCardHeader(
     owner: MomentOwner?,
     createdAt: Instant?,
     compact: Boolean,
+    showOwner: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -181,11 +191,24 @@ private fun MomentCardHeader(
         horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
     ) {
         Box(modifier = Modifier.weight(1f)) {
-            MomentOwnerBadge(
-                owner = owner,
-                createdAt = createdAt,
-                compact = compact,
-            )
+            if (showOwner) {
+                MomentOwnerBadge(
+                    owner = owner,
+                    createdAt = createdAt,
+                    compact = compact,
+                )
+            } else {
+                val time = feedTimeLabel(createdAt)
+                if (time != null) {
+                    MomentTime(
+                        time = time,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(colors.background)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    )
+                }
+            }
         }
         Box(
             modifier = Modifier
@@ -233,6 +256,7 @@ private fun MomentOwnerBadge(
             Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
                     text = ownerName,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.testTag("feed_owner_name"),
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
@@ -245,6 +269,7 @@ private fun MomentOwnerBadge(
         } else {
             Text(
                 text = ownerName,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .weight(1f, fill = false)
                     .widthIn(max = 120.dp)
@@ -261,10 +286,10 @@ private fun MomentOwnerBadge(
 }
 
 @Composable
-private fun MomentTime(time: String) {
+private fun MomentTime(time: String, modifier: Modifier = Modifier) {
     Text(
         text = time,
-        modifier = Modifier.testTag("feed_moment_time"),
+        modifier = modifier.testTag("feed_moment_time"),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,
@@ -282,6 +307,7 @@ private fun MomentCardFooter(
     onReact: (String) -> Unit,
     reactionsEnabled: Boolean,
     sentEmoji: String?,
+    reactionsVisible: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -312,14 +338,16 @@ private fun MomentCardFooter(
                 compact = compact,
             )
         }
-        MomentReactionButton(
-            enabled = reactionsEnabled,
-            sentEmoji = sentEmoji,
-            expanded = showReactions,
-            onExpand = onShowReactions,
-            onDismiss = onDismissReactions,
-            onReact = onReact,
-        )
+        if (reactionsVisible) {
+            MomentReactionButton(
+                enabled = reactionsEnabled,
+                sentEmoji = sentEmoji,
+                expanded = showReactions,
+                onExpand = onShowReactions,
+                onDismiss = onDismissReactions,
+                onReact = onReact,
+            )
+        }
     }
 }
 
