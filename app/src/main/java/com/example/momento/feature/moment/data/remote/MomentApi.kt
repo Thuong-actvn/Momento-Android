@@ -16,6 +16,9 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface MomentApi {
+    @GET("photos/{photoId}")
+    suspend fun getPhoto(@Path("photoId") photoId: String): PhotoResponseDto
+
     @GET("feed")
     suspend fun getFeed(
         @Query("cursor") cursor: String? = null,

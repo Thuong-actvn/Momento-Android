@@ -4,6 +4,7 @@ import com.example.momento.core.common.suspendRunCatching
 import com.example.momento.core.network.ApiException
 import com.example.momento.core.user.data.CurrentUserStore
 import com.example.momento.feature.moment.data.local.MomentImageStore
+import com.example.momento.feature.moment.data.local.MomentMemoryStore
 import com.example.momento.feature.moment.data.remote.MomentApi
 import com.example.momento.feature.moment.data.remote.MomentError
 import com.example.momento.feature.moment.data.remote.MomentException
@@ -34,28 +35,51 @@ import okio.BufferedSink
 class MomentRepositoryImpl @Inject constructor(
     private val api: MomentApi,
     private val userStore: CurrentUserStore,
+    private val memory: MomentMemoryStore,
 ) : MomentRepository {
-    override suspend fun getFeed(cursor: String?, limit: Int): Result<CursorPage<Moment>> = requestResult {
+    override val cachedMoments = memory.moments
+
+    override suspend fun getMoment(photoId: String): Result<Moment> = requestResult { session ->
+        val id = validateId(photoId)
+        try {
+            val response = api.getPhoto(id)
+            val moment = decodeResponse {
+                response.toDomain().also { require(it.id == id) { "Photo ID does not match the request" } }
+            }
+            memory.merge(session, listOf(moment))
+            moment
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            val failure = error.toMomentException()
+            when (failure.backendCode) {
+                "PHOTO_NOT_FOUND" -> memory.remove(session, id)
+                "PHOTO_ACCESS_DENIED" -> memory.evict(session, id)
+            }
+            throw failure
+        }
+    }
+
+    override suspend fun getFeed(cursor: String?, limit: Int): Result<CursorPage<Moment>> = requestResult { session ->
         validatePage(cursor, limit)
         val response = api.getFeed(cursor, limit)
-        decodeResponse { response.toDomain() }
+        decodeResponse { response.toDomain() }.also { memory.merge(session, it.data) }
     }
 
     override suspend fun getFriendFeed(
         friendId: String,
         cursor: String?,
         limit: Int,
-    ): Result<CursorPage<Moment>> = requestResult {
+    ): Result<CursorPage<Moment>> = requestResult { session ->
         validateId(friendId)
         validatePage(cursor, limit)
         val response = api.getFriendFeed(friendId, cursor, limit)
-        decodeResponse { response.toDomain() }
+        decodeResponse { response.toDomain() }.also { memory.merge(session, it.data) }
     }
 
-    override suspend fun getMyMoments(cursor: String?, limit: Int): Result<CursorPage<Moment>> = requestResult {
+    override suspend fun getMyMoments(cursor: String?, limit: Int): Result<CursorPage<Moment>> = requestResult { session ->
         validatePage(cursor, limit)
         val response = api.getMyPhotos(cursor, limit)
-        decodeResponse { response.toDomain() }
+        decodeResponse { response.toDomain() }.also { memory.merge(session, it.data) }
     }
 
     override suspend fun uploadMoment(
@@ -65,7 +89,7 @@ class MomentRepositoryImpl @Inject constructor(
         caption: String?,
         audienceUserIds: List<String>,
         metadata: JsonObject?,
-    ): Result<Moment> = requestResult {
+    ): Result<Moment> = requestResult { session ->
         if (!image.isFile || image.length() == 0L) throw MomentException(MomentError.INVALID_IMAGE)
         if (image.length() > MomentImageStore.MAX_IMAGE_BYTES) {
             throw MomentException(MomentError.IMAGE_TOO_LARGE)
@@ -97,7 +121,7 @@ class MomentRepositoryImpl @Inject constructor(
             audienceUserIds = recipients,
             metadata = metadataJson,
         )
-        decodeResponse { response.toDomain() }
+        decodeResponse { response.toDomain() }.also { memory.merge(session, listOf(it)) }
     }
 
     override suspend fun reactToMoment(momentId: String, emoji: String): Result<Unit> = requestResult {
@@ -121,9 +145,10 @@ class MomentRepositoryImpl @Inject constructor(
         decodeResponse { response.requireData().map { it.toDomain() } }
     }
 
-    override suspend fun deleteMoment(momentId: String): Result<Unit> = requestResult {
+    override suspend fun deleteMoment(momentId: String): Result<Unit> = requestResult { session ->
         validateId(momentId)
         api.deletePhoto(momentId)
+        memory.remove(session, momentId)
     }
 
     private fun validatePage(cursor: String?, limit: Int) {
@@ -149,14 +174,14 @@ class MomentRepositoryImpl @Inject constructor(
         throw MomentException(MomentError.INVALID_RESPONSE, cause = error)
     }
 
-    private suspend fun <T> requestResult(block: suspend () -> T): Result<T> = suspendRunCatching {
+    private suspend fun <T> requestResult(block: suspend (CurrentUserStore.Session) -> T): Result<T> = suspendRunCatching {
         val session = try {
             userStore.requireSession()
         } catch (error: IllegalStateException) {
             throw MomentException(MomentError.UNAUTHENTICATED, cause = error)
         }
         try {
-            block().also { checkSession(session) }
+            block(session).also { checkSession(session) }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {

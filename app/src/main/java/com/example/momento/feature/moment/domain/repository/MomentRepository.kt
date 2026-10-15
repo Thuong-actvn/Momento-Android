@@ -5,9 +5,15 @@ import com.example.momento.feature.moment.domain.model.CursorPage
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.model.MomentReaction
 import java.io.File
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.JsonObject
 
 interface MomentRepository {
+    /** Moment đã tải trong phiên để hiển thị nhanh trước khi lấy dữ liệu mới. */
+    val cachedMoments: Flow<Map<String, Moment>>
+
+    suspend fun getMoment(photoId: String): Result<Moment>
+
     /** Omit cursor on the first page; pass back the server's nextCursor unchanged. */
     suspend fun getFeed(cursor: String? = null, limit: Int = 10): Result<CursorPage<Moment>>
 
