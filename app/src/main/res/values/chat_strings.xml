@@ -26,6 +26,12 @@
     <string name="chat_refresh">Làm mới</string>
     <string name="chat_load_older">Tải tin nhắn cũ hơn</string>
     <string name="chat_moment_unavailable">Khoảnh khắc không khả dụng</string>
+    <string name="chat_reply_sent">Đã gửi phản hồi khoảnh khắc</string>
+    <string name="chat_reply_own_moment">Khoảnh khắc của bạn</string>
+    <string name="chat_reply_photo_missing">Khoảnh khắc đã bị xóa hoặc không còn khả dụng.</string>
+    <string name="chat_reply_photo_forbidden">Bạn không còn quyền phản hồi khoảnh khắc này.</string>
+    <string name="chat_reply_check">Kiểm tra hội thoại</string>
+    <string name="chat_reply_open">Xem hội thoại</string>
     <string name="chat_history_error">Không thể tải lịch sử tin nhắn.</string>
     <string name="chat_history_network_error">Không thể tải tin nhắn. Hãy kiểm tra kết nối mạng.</string>
     <string name="chat_history_forbidden">Bạn không có quyền xem cuộc trò chuyện này.</string>

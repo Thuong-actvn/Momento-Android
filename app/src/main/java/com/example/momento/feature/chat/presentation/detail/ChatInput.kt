@@ -32,9 +32,9 @@ fun ChatInput(
     enabled: Boolean,
     isError: Boolean,
     modifier: Modifier = Modifier,
+    placeholder: String = stringResource(R.string.chat_message_placeholder),
 ) {
     val colors = MaterialTheme.colorScheme
-    val placeholder = stringResource(R.string.chat_message_placeholder)
     val inputError = stringResource(R.string.chat_message_invalid)
     val textColor = when {
         isError -> colors.error
