@@ -16,6 +16,6 @@ import kotlinx.serialization.Serializable
 data object ChatList
 
 @Serializable
-data class ChatThread(
+data class ChatDetail(
     val otherUserId: String,
 )

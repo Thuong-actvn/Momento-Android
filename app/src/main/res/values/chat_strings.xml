@@ -19,5 +19,22 @@
     <string name="chat_conversations_network_error">Không thể tải cuộc trò chuyện. Hãy kiểm tra kết nối mạng.</string>
     <string name="chat_invalid_response">Dữ liệu cuộc trò chuyện chưa hợp lệ. Vui lòng thử lại.</string>
     <string name="chat_session_error">Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.</string>
-    <string name="chat_thread_placeholder">Chức năng nhắn tin sẽ sớm có mặt.</string>
+    <string name="chat_detail_empty_title">Chưa có tin nhắn</string>
+    <string name="chat_detail_empty_description">Gửi lời chào để bắt đầu trò chuyện.</string>
+    <string name="chat_message_placeholder">Nhập tin nhắn…</string>
+    <string name="chat_send">Gửi tin nhắn</string>
+    <string name="chat_refresh">Làm mới</string>
+    <string name="chat_load_older">Tải tin nhắn cũ hơn</string>
+    <string name="chat_moment_reply">Phản hồi khoảnh khắc</string>
+    <string name="chat_history_error">Không thể tải lịch sử tin nhắn.</string>
+    <string name="chat_history_network_error">Không thể tải tin nhắn. Hãy kiểm tra kết nối mạng.</string>
+    <string name="chat_history_forbidden">Bạn không có quyền xem cuộc trò chuyện này.</string>
+    <string name="chat_invalid_recipient">Người nhận không hợp lệ hoặc không còn tồn tại.</string>
+    <string name="chat_message_invalid">Tin nhắn phải có từ 1 đến 2.000 ký tự.</string>
+    <string name="chat_send_error">Không thể gửi tin nhắn. Nội dung đã nhập vẫn được giữ lại.</string>
+    <string name="chat_send_network_error">Không thể gửi tin nhắn. Hãy kiểm tra kết nối mạng.</string>
+    <string name="chat_send_blocked">Không thể gửi tin nhắn do một trong hai tài khoản đã chặn người kia.</string>
+    <string name="chat_recipient_deleted">Tài khoản người nhận đã bị xóa.</string>
+    <string name="chat_send_forbidden">Bạn không có quyền gửi tin nhắn cho người này.</string>
+    <string name="chat_send_uncertain">Chưa xác nhận được tin nhắn đã gửi. Hãy làm mới và kiểm tra lịch sử trước khi gửi lại.</string>
 </resources>

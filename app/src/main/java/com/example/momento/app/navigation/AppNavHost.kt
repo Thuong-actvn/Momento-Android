@@ -20,7 +20,7 @@ import com.example.momento.feature.auth.navigation.CompleteProfile
 import com.example.momento.feature.auth.navigation.authGraph
 import com.example.momento.feature.chat.presentation.list.ChatListRoute
 import com.example.momento.feature.chat.presentation.list.ChatListViewModel
-import com.example.momento.feature.chat.presentation.thread.ChatThreadRoute
+import com.example.momento.feature.chat.presentation.detail.ChatDetailRoute
 import com.example.momento.feature.friend.presentation.FriendRoute
 import com.example.momento.feature.profile.presentation.editprofile.EditProfileRoute
 import com.example.momento.feature.profile.presentation.profile.ProfileRoute
@@ -97,22 +97,22 @@ fun AppNavHost(
                 ChatListRoute(
                     onBack = onBack,
                     onOpenConversation = { userId ->
-                        navController.navigate(ChatThread(otherUserId = userId)) {
+                        navController.navigate(ChatDetail(otherUserId = userId)) {
                             launchSingleTop = true
                         }
                     },
                 )
             }
-            composable<ChatThread> { entry ->
-                val chatRoute = entry.toRoute<ChatThread>()
+            composable<ChatDetail> { entry ->
+                val chatRoute = entry.toRoute<ChatDetail>()
 
-                // Dùng lại ViewModel danh sách để lấy tên/avatar cho khung chat.
+                // Header dùng tên/avatar từ danh sách; tin nhắn có ViewModel riêng theo entry.
                 val listBackStackEntry = remember(entry) {
                     navController.getBackStackEntry<ChatList>()
                 }
                 val chatListViewModel = hiltViewModel<ChatListViewModel>(listBackStackEntry)
 
-                ChatThreadRoute(
+                ChatDetailRoute(
                     otherUserId = chatRoute.otherUserId,
                     onBack = onBack,
                     listViewModel = chatListViewModel,
