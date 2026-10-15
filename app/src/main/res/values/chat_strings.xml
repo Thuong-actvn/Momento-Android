@@ -25,7 +25,7 @@
     <string name="chat_send">Gửi tin nhắn</string>
     <string name="chat_refresh">Làm mới</string>
     <string name="chat_load_older">Tải tin nhắn cũ hơn</string>
-    <string name="chat_moment_reply">Phản hồi khoảnh khắc</string>
+    <string name="chat_moment_unavailable">Khoảnh khắc không khả dụng</string>
     <string name="chat_history_error">Không thể tải lịch sử tin nhắn.</string>
     <string name="chat_history_network_error">Không thể tải tin nhắn. Hãy kiểm tra kết nối mạng.</string>
     <string name="chat_history_forbidden">Bạn không có quyền xem cuộc trò chuyện này.</string>

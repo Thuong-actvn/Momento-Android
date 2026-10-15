@@ -7,6 +7,8 @@ import com.example.momento.R
 import com.example.momento.core.user.data.CurrentUserStore
 import com.example.momento.feature.chat.data.remote.ChatException
 import com.example.momento.feature.chat.domain.repository.ChatRepository
+import com.example.momento.feature.chat.domain.model.ChatMessageType
+import com.example.momento.feature.moment.domain.repository.MomentRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
@@ -26,6 +28,7 @@ class ChatDetailViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val currentUserStore: CurrentUserStore,
     private val savedStateHandle: SavedStateHandle,
+    private val moments: MomentRepository,
 ) : ViewModel() {
     private val otherUserId = checkNotNull(savedStateHandle.get<String>("otherUserId"))
     private val _state = MutableStateFlow(ChatDetailUiState(isLoadingHistory = true))
@@ -37,6 +40,9 @@ class ChatDetailViewModel @Inject constructor(
     private var historyJob: Job? = null
     private var sendJob: Job? = null
     private var messagesObserver: Job? = null
+    private var momentJob: Job? = null
+    private val momentLoader = ChatMomentLoader(moments, currentUserStore)
+    private val attemptedMomentIds = mutableSetOf<String>()
 
     init {
         viewModelScope.launch {
@@ -64,6 +70,11 @@ class ChatDetailViewModel @Inject constructor(
     }
 
     fun refresh() {
+        if (historyJob?.isActive == true) return
+        momentJob?.cancel()
+        momentJob = null
+        attemptedMomentIds.clear()
+        _state.update { it.copy(loadingMomentIds = emptySet()) }
         loadHistory(older = false)
     }
 
@@ -162,6 +173,7 @@ class ChatDetailViewModel @Inject constructor(
                         if (checkingDelivery) {
                             savedStateHandle[UNCERTAIN_KEY] = false
                         }
+                        loadMomentReferences(requestSession)
                     } else {
                         _state.update { state ->
                             if (older) {
@@ -180,6 +192,9 @@ class ChatDetailViewModel @Inject constructor(
         historyJob?.cancel()
         sendJob?.cancel()
         messagesObserver?.cancel()
+        momentJob?.cancel()
+        momentJob = null
+        attemptedMomentIds.clear()
         nextCursor = null
         session = currentSession
 
@@ -215,13 +230,49 @@ class ChatDetailViewModel @Inject constructor(
             sendError = if (uncertain) R.string.chat_send_uncertain else null,
         )
         messagesObserver = viewModelScope.launch {
-            chatRepository.observeMessages(otherUserId).collect { messages ->
+            combine(chatRepository.observeMessages(otherUserId), moments.cachedMoments) { messages, photos ->
+                messages to photos
+            }.collect { (messages, photos) ->
                 withActiveSession(currentSession) {
-                    _state.update { it.copy(messages = messages) }
+                    _state.update { it.copy(messages = messages, moments = photos) }
+                    loadMomentReferences(currentSession)
                 }
             }
         }
-        refresh()
+        loadHistory(older = false)
+    }
+
+    private fun loadMomentReferences(requestSession: CurrentUserStore.Session) {
+        if (momentJob?.isActive == true) return
+        withActiveSession(requestSession) {
+            momentJob = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                while (true) {
+                    try {
+                        currentUserStore.checkSession(requestSession)
+                    } catch (_: IllegalStateException) {
+                        break
+                    }
+                    val photoIds = _state.value.messages
+                        .filter { it.type == ChatMessageType.PHOTO_COMMENT }
+                        .mapNotNull { it.referencePhotoId }
+                        .filterNot { it in attemptedMomentIds }
+                        .toSet()
+                    if (photoIds.isEmpty()) break
+
+                    withActiveSession(requestSession) {
+                        attemptedMomentIds.addAll(photoIds)
+                        _state.update { state ->
+                            state.copy(loadingMomentIds = state.loadingMomentIds + (photoIds - state.moments.keys))
+                        }
+                    }
+                    momentLoader.load(requestSession, photoIds) { photoId ->
+                        withActiveSession(requestSession) {
+                            _state.update { it.copy(loadingMomentIds = it.loadingMomentIds - photoId) }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun isValidRecipient(ownUserId: String?): Boolean {

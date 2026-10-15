@@ -2,6 +2,7 @@ package com.example.momento.feature.chat.presentation.detail
 
 import androidx.annotation.StringRes
 import com.example.momento.feature.chat.domain.model.ChatMessage
+import com.example.momento.feature.moment.domain.model.Moment
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -13,6 +14,8 @@ const val CHAT_MESSAGE_MAX_LENGTH = 2000
 data class ChatDetailUiState(
     val ownUserId: String? = null,
     val messages: List<ChatMessage> = emptyList(),
+    val moments: Map<String, Moment> = emptyMap(),
+    val loadingMomentIds: Set<String> = emptySet(),
     val draft: String = "",
     val isLoadingHistory: Boolean = false,
     val hasLoadedHistory: Boolean = false,

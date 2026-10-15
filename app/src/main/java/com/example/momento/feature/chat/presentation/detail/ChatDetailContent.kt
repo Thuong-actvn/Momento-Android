@@ -73,7 +73,13 @@ fun ChatDetailContent(
                 modifier = Modifier.fillMaxSize().testTag("chat_history"),
             ) {
                 items(state.messages.asReversed(), key = { message -> message.id }) { message ->
-                    ChatMessageBubble(message = message, isOwnMessage = message.senderId == state.ownUserId)
+                    val moment = message.referencePhotoId?.let { state.moments[it] }
+                    ChatMessageBubble(
+                        message = message,
+                        isOwnMessage = message.senderId == state.ownUserId,
+                        moment = moment,
+                        isMomentLoading = message.referencePhotoId in state.loadingMomentIds,
+                    )
                 }
                 if (state.hasMore) {
                     item(key = "older_messages") {

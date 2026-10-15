@@ -19,12 +19,15 @@ import androidx.compose.ui.unit.dp
 import com.example.momento.R
 import com.example.momento.feature.chat.domain.model.ChatMessage
 import com.example.momento.feature.chat.domain.model.ChatMessageType
+import com.example.momento.feature.moment.domain.model.Moment
 
 @Composable
 fun ChatMessageBubble(
     message: ChatMessage,
     isOwnMessage: Boolean,
     modifier: Modifier = Modifier,
+    moment: Moment? = null,
+    isMomentLoading: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     Row(
@@ -36,7 +39,21 @@ fun ChatMessageBubble(
             horizontalAlignment = if (isOwnMessage) Alignment.End else Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            if (message.type == ChatMessageType.PHOTO_COMMENT) {
+                if (moment != null && moment.id == message.referencePhotoId) {
+                    ChatMomentPreview(moment = moment)
+                } else if (isMomentLoading) {
+                    ChatMomentLoading()
+                } else {
+                    Text(
+                        text = stringResource(R.string.chat_moment_unavailable),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+            }
             Surface(
+                modifier = Modifier.testTag("chat_bubble_${message.id}"),
                 color = if (isOwnMessage) colors.primary else colors.surfaceContainerLow,
                 contentColor = if (isOwnMessage) colors.onPrimary else colors.onSurface,
                 shape = RoundedCornerShape(
@@ -46,18 +63,11 @@ fun ChatMessageBubble(
                     bottomStart = 20.dp,
                 ),
             ) {
-                Column(
+                Text(
+                    text = message.content,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    if (message.type == ChatMessageType.PHOTO_COMMENT) {
-                        Text(
-                            text = stringResource(R.string.chat_moment_reply),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                    Text(text = message.content, style = MaterialTheme.typography.bodyLarge)
-                }
+                    style = MaterialTheme.typography.bodyLarge,
+                )
             }
             message.createdAt?.let { timestamp ->
                 Text(
