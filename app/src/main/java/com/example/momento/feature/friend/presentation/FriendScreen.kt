@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -135,6 +136,7 @@ fun FriendScreen(
                         onValueChange = onSearchQueryChange,
                         placeholder = stringResource(R.string.friend_search_placeholder),
                         clearContentDescription = stringResource(R.string.friend_search_clear),
+                        modifier = Modifier.height(48.dp),
                         onSearch = {
                             focusManager.clearFocus()
                             onSearch()
