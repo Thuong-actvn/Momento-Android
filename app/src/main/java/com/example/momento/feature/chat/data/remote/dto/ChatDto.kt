@@ -1,6 +1,13 @@
 package com.example.momento.feature.chat.data.remote.dto
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+
+@Serializable
+data class ChatRealtimeEventDto(
+    val type: String? = null,
+    val payload: JsonElement? = null,
+)
 
 @Serializable
 data class ConversationSummaryDto(

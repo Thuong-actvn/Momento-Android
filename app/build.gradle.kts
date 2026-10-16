@@ -68,6 +68,8 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.serialization)
     implementation(libs.okhttp)
+    implementation(libs.krossbow.stomp.core)
+    implementation(libs.krossbow.websocket.okhttp)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     ksp(libs.hilt.compiler)
