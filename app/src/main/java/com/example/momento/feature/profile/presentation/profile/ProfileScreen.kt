@@ -39,6 +39,7 @@ fun ProfileScreen(
     onBack: () -> Unit,
     onEditProfile: () -> Unit,
     onConnectionsClick: () -> Unit,
+    onWidgetsClick: () -> Unit,
     onSignOut: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -86,7 +87,10 @@ fun ProfileScreen(
             Spacer(Modifier.height(16.dp))
             ProfileConnectionsCard(onClick = onConnectionsClick, enabled = canNavigate)
             Spacer(Modifier.height(12.dp))
-            ProfileSettingsCard()
+            ProfileSettingsCard(
+                onWidgetsClick = onWidgetsClick,
+                enabled = canNavigate,
+            )
             Spacer(Modifier.height(20.dp))
             MomentoActionButton(
                 text = stringResource(
@@ -131,6 +135,7 @@ private fun ProfilePreview() {
             onBack = {},
             onEditProfile = {},
             onConnectionsClick = {},
+            onWidgetsClick = {},
             onSignOut = {},
             onRetry = {},
         )

@@ -24,6 +24,7 @@ import com.example.momento.feature.chat.presentation.detail.ChatDetailRoute
 import com.example.momento.feature.friend.presentation.FriendRoute
 import com.example.momento.feature.profile.presentation.editprofile.EditProfileRoute
 import com.example.momento.feature.profile.presentation.profile.ProfileRoute
+import com.example.momento.feature.widget.presentation.WidgetRoute
 
 @Composable
 fun AppNavHost(
@@ -84,6 +85,11 @@ fun AppNavHost(
                     onConnectionsClick = {
                         navController.navigate(Friends) { launchSingleTop = true }
                     },
+                    onWidgetsClick = {
+                        navController.navigate(WidgetSettings) {
+                            launchSingleTop = true
+                        }
+                    },
                     onSignedOut = {
                         navController.navigate(AuthGraph) {
                             popUpTo(MainGraph) { inclusive = true }
@@ -97,6 +103,16 @@ fun AppNavHost(
             }
             composable<Friends> {
                 FriendRoute(onBack = onBack)
+            }
+            composable<WidgetSettings> {
+                WidgetRoute(
+                    onBack = onBack,
+                    onFriendsClick = {
+                        navController.navigate(Friends) {
+                            launchSingleTop = true
+                        }
+                    },
+                )
             }
             composable<ChatList> { entry ->
                 val mainEntry = remember(entry) { navController.getBackStackEntry<MainGraph>() }

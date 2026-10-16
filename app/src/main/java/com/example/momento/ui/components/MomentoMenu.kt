@@ -2,6 +2,8 @@ package com.example.momento.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -107,13 +111,30 @@ fun MomentoMenuRow(
     chevronColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
+    highlightOnPress: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val hasSubtitle = subtitle != null
-    val clickModifier = if (onClick != null) {
-        Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-    } else {
-        Modifier
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val highlightContent = highlightOnPress && enabled && isPressed
+
+    val clickModifier = when {
+        onClick == null -> Modifier
+
+        highlightOnPress -> Modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            enabled = enabled,
+            role = Role.Button,
+            onClick = onClick,
+        )
+
+        else -> Modifier.clickable(
+            enabled = enabled,
+            role = Role.Button,
+            onClick = onClick,
+        )
     }
 
     Row(
@@ -139,7 +160,10 @@ fun MomentoMenuRow(
             }
         }
         Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -148,7 +172,7 @@ fun MomentoMenuRow(
                 Text(
                     text = title,
                     modifier = Modifier.weight(1f, fill = badge == null),
-                    color = colors.onSurface,
+                    color = if (highlightContent) colors.primary else colors.onSurface,
                     style = if (hasSubtitle) {
                         MaterialTheme.typography.titleSmall
                     } else {
@@ -180,7 +204,7 @@ fun MomentoMenuRow(
             imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
-            tint = chevronColor,
+            tint = if (highlightContent) colors.primary else chevronColor,
         )
     }
 }

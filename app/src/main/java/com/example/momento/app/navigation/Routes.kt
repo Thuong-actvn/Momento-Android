@@ -13,6 +13,9 @@ import kotlinx.serialization.Serializable
 @Serializable data object Friends
 
 @Serializable
+data object WidgetSettings
+
+@Serializable
 data object ChatList
 
 @Serializable

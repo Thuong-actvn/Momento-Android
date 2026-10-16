@@ -44,6 +44,16 @@ fun ProfileIdentityCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val displayName = user?.displayName
+    val username = user?.username
+    val profileName = if (!displayName.isNullOrBlank()) {
+        displayName
+    } else if (!username.isNullOrBlank()) {
+        username
+    } else {
+        stringResource(R.string.profile_loading)
+    }
+
     MomentoCard(modifier = modifier) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -58,9 +68,7 @@ fun ProfileIdentityCard(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = user?.displayName?.takeIf { it.isNotBlank() }
-                    ?: user?.username?.takeIf { it.isNotBlank() }
-                    ?: stringResource(R.string.profile_loading),
+                text = profileName,
                 color = colors.onSurface,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -124,7 +132,11 @@ internal fun ProfileConnectionsCard(
 }
 
 @Composable
-internal fun ProfileSettingsCard(modifier: Modifier = Modifier) {
+fun ProfileSettingsCard(
+    onWidgetsClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
     val colors = MaterialTheme.colorScheme
     MomentoCard(modifier = modifier) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -132,6 +144,9 @@ internal fun ProfileSettingsCard(modifier: Modifier = Modifier) {
                 title = stringResource(R.string.profile_widgets),
                 icon = Icons.Outlined.Widgets,
                 iconColor = colors.primary,
+                onClick = onWidgetsClick,
+                enabled = enabled,
+                highlightOnPress = true,
             )
             MomentoMenuRow(
                 title = stringResource(R.string.profile_notifications),
