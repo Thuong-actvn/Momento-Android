@@ -58,6 +58,7 @@ class ChatRepositoryImpl @Inject constructor(
         val peerId = validatePeer(otherUserId, session)
         require(limit in 1..50) { "Message page limit must be between 1 and 50" }
         require(cursor == null || cursor.isNotBlank()) { "Omit cursor on the first page" }
+        memory.rememberPeer(session, peerId)
         val response = try {
             api.getMessages(peerId, cursor, limit)
         } catch (error: CancellationException) {

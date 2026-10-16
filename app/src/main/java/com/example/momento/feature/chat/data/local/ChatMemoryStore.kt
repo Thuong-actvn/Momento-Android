@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-/** Session-owned cache. REST pages and future realtime events use the same merge operations. */
+/** Session-owned cache shared by REST pages and realtime events. */
 @Singleton
 class ChatMemoryStore @Inject constructor(
     private val users: CurrentUserStore,
@@ -55,6 +55,35 @@ class ChatMemoryStore @Inject constructor(
     fun observeMessages(otherUserId: String): Flow<List<ChatMessage>> = currentSnapshots.map { snapshot ->
         snapshot.messages[otherUserId].orEmpty().values.sortedWith(messageOrder)
     }.distinctUntilChanged()
+
+    fun rememberPeer(session: CurrentUserStore.Session, otherUserId: String) {
+        mutate(session) { snapshot ->
+            require(otherUserId != session.userId) { "Cannot chat with yourself" }
+            if (otherUserId in snapshot.messages) {
+                return@mutate snapshot
+            }
+
+            val messages = snapshot.messages + (otherUserId to emptyMap<String, ChatMessage>())
+            snapshot.copy(messages = messages)
+        }
+    }
+
+    /** Take this snapshot before REST starts so new socket messages cannot hide a gap. */
+    fun latestMessageIds(session: CurrentUserStore.Session): Map<String, String?> {
+        return users.withSession(session) {
+            val snapshot = snapshots.value
+            if (snapshot.version != session.generation) {
+                return@withSession emptyMap()
+            }
+
+            snapshot.messages.mapValues { (_, messages) ->
+                val orderedMessages = messages.values.sortedWith(messageOrder)
+                val latestDatedMessage = orderedMessages.lastOrNull { it.createdAt != null }
+                val firstPendingMessage = orderedMessages.firstOrNull()
+                latestDatedMessage?.id ?: firstPendingMessage?.id
+            }
+        }
+    }
 
     fun mergeConversations(
         session: CurrentUserStore.Session,
