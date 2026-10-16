@@ -42,9 +42,7 @@ fun ChatDetailContent(
     val newestMessageId = state.messages.lastOrNull()?.id
 
     LaunchedEffect(newestMessageId, state.lastSentMessageId) {
-        if (newestMessageId != null &&
-            (listState.firstVisibleItemIndex == 0 || newestMessageId == state.lastSentMessageId)
-        ) {
+        if (newestMessageId != null) {
             listState.scrollToItem(0)
         }
     }
