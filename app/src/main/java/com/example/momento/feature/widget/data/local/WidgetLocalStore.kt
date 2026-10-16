@@ -26,6 +26,7 @@ data class WidgetAccount(
 data class StoredWidgetData(
     val account: WidgetAccount? = null,
     val snapshot: WidgetSnapshot? = null,
+    val selectedFriendId: String? = null,
 )
 
 class WidgetSessionChangedException : IllegalStateException("Widget account is no longer active")
@@ -98,6 +99,29 @@ class WidgetLocalStore @Inject constructor(
             }
 
             values[key] = json.encodeToString(state.copy(snapshot = snapshot))
+        }
+    }
+
+    suspend fun saveSelectedFriend(
+        account: WidgetAccount,
+        friendId: String?,
+        checkSession: () -> Unit,
+    ) {
+        preferences.edit { values ->
+            checkSession()
+            val state = decode(values)
+            if (state.account != account) {
+                throw WidgetSessionChangedException()
+            }
+            val isCurrentFriend = state.snapshot?.friends?.any { friend ->
+                friend.id == friendId
+            } == true
+            require(friendId == null || isCurrentFriend) {
+                "Select a current friend"
+            }
+
+            val updatedState = state.copy(selectedFriendId = friendId)
+            values[key] = json.encodeToString(updatedState)
         }
     }
 
