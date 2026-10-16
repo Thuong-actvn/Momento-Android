@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_screen_title">Tiện ích</string>
+    <string name="widget_back">Quay lại</string>
+    <string name="widget_preview_label">XEM TRƯỚC · 2 × 2</string>
+    <string name="widget_refresh">Làm mới ảnh</string>
+    <string name="widget_next">Khoảnh khắc tiếp theo</string>
+    <string name="widget_photo_description">Khoảnh khắc của %1$s</string>
+    <string name="widget_photo_error">Không tải được ảnh</string>
+    <string name="widget_photo_empty">Chưa có khoảnh khắc</string>
+    <string name="widget_photo_empty_description">Ảnh mới từ bạn bè sẽ xuất hiện ở đây.</string>
+    <string name="widget_single_empty_description">Người bạn này chưa có ảnh để hiển thị.</string>
+    <string name="widget_friend_unavailable">Người bạn này không còn trong danh sách. Hãy chọn lại nguồn ảnh.</string>
+    <string name="widget_source_title">Nguồn ảnh</string>
+    <string name="widget_all_friends">Tất cả bạn bè</string>
+    <string name="widget_username">\@%1$s</string>
+    <string name="widget_no_friends">Thêm bạn bè để bắt đầu chia sẻ khoảnh khắc.</string>
+    <string name="widget_manage_friends">Quản lý bạn bè</string>
+    <string name="widget_loading">Đang tải khoảnh khắc…</string>
+    <string name="widget_load_error">Không thể làm mới. Ảnh đã lưu vẫn được giữ lại.</string>
+    <string name="widget_session_error">Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.</string>
+    <string name="widget_save_error">Không thể lưu lựa chọn. Vui lòng chọn lại.</string>
+    <string name="widget_retry">Thử lại</string>
+</resources>
