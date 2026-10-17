@@ -3,4 +3,5 @@
     <!-- Firebase Auth stores SDK credentials in SharedPreferences. -->
     <exclude domain="sharedpref" path="." />
     <exclude domain="file" path="datastore/momento_widget.preferences_pb" />
+    <exclude domain="file" path="widget_images/" />
 </full-backup-content>
