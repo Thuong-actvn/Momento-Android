@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_load_error">Không thể tải thông báo. Vui lòng thử lại.</string>
+    <string name="notification_load_more_error">Chưa tải được thông báo cũ hơn. Vui lòng thử lại.</string>
+    <string name="notification_read_error">Chưa thể đánh dấu thông báo đã đọc. Vui lòng thử lại.</string>
+    <string name="notification_read_all_error">Chưa thể đánh dấu tất cả đã đọc. Vui lòng thử lại.</string>
+    <string name="notification_read_all_success">Đã đánh dấu tất cả thông báo là đã đọc.</string>
+    <string name="notification_network_error">Không có kết nối. Vui lòng thử lại.</string>
+    <string name="notification_server_error">Máy chủ đang gặp sự cố. Vui lòng thử lại.</string>
+    <string name="notification_session_error">Phiên đăng nhập đã thay đổi. Vui lòng đăng nhập lại.</string>
+</resources>
