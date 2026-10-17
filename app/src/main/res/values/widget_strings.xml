@@ -22,4 +22,6 @@
     <string name="widget_retry">Thử lại</string>
     <string name="widget_sign_in">Đăng nhập để xem khoảnh khắc</string>
     <string name="widget_description">Ảnh mới nhất từ bạn bè</string>
+    <string name="widget_add">Thêm vào màn hình chính</string>
+    <string name="widget_add_manually">Nhấn giữ màn hình chính, chọn Tiện ích rồi tìm Momento để thêm widget.</string>
 </resources>
