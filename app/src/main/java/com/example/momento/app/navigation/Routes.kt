@@ -16,6 +16,9 @@ import kotlinx.serialization.Serializable
 data object WidgetSettings
 
 @Serializable
+data class WidgetMoment(val photoId: String)
+
+@Serializable
 data object ChatList
 
 @Serializable

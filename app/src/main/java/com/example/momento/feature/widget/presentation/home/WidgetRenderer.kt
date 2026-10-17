@@ -187,8 +187,8 @@ class WidgetRenderer @Inject constructor(
         views.setInt(R.id.widget_next_button, "setColorFilter", contentColor)
         views.setOnClickPendingIntent(R.id.widget_next_button, nextPhotoIntent())
 
-        // Tapping the photo opens the app.
-        views.setOnClickPendingIntent(R.id.widget_root, openAppIntent())
+        // Tapping the photo opens this moment after the app restores its session.
+        views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(photo?.id))
         views.setContentDescription(
             R.id.widget_root,
             context.getString(R.string.widget_photo_description, senderName),
@@ -196,9 +196,22 @@ class WidgetRenderer @Inject constructor(
         return views
     }
 
-    private fun openAppIntent(): PendingIntent {
+    private fun openAppIntent(photoId: String?): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            .addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            )
+        if (photoId != null) {
+            // Different photos need different PendingIntents, including across widget updates.
+            intent.data = Uri.Builder()
+                .scheme("momento")
+                .authority("widget")
+                .appendPath("photos")
+                .appendPath(photoId)
+                .build()
+            intent.putExtra(MainActivity.EXTRA_WIDGET_PHOTO_ID, photoId)
+        }
         return PendingIntent.getActivity(
             context,
             0,

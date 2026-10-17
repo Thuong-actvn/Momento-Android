@@ -2,10 +2,12 @@ package com.example.momento.app.navigation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
@@ -15,6 +17,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navigation
 import androidx.navigation.toRoute
 import com.example.momento.app.main.MainRoute
+import com.example.momento.app.main.MainViewModel
 import com.example.momento.feature.auth.navigation.AuthGraph
 import com.example.momento.feature.auth.navigation.CompleteProfile
 import com.example.momento.feature.auth.navigation.authGraph
@@ -25,14 +28,19 @@ import com.example.momento.feature.friend.presentation.FriendRoute
 import com.example.momento.feature.profile.presentation.editprofile.EditProfileRoute
 import com.example.momento.feature.profile.presentation.profile.ProfileRoute
 import com.example.momento.feature.widget.presentation.WidgetRoute
+import com.example.momento.feature.widget.presentation.WidgetMomentRoute
 
 @Composable
 fun AppNavHost(
     navController: NavHostController,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
+    widgetPhotoId: String? = null,
+    onWidgetPhotoOpened: () -> Unit = {},
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
+    val sessionViewModel: MainViewModel = hiltViewModel()
+    val currentUser by sessionViewModel.currentUser.collectAsStateWithLifecycle()
     val onBack = {
         if (navController.previousBackStackEntry == null || !navController.popBackStack()) onExit()
     }
@@ -114,6 +122,10 @@ fun AppNavHost(
                     },
                 )
             }
+            composable<WidgetMoment> { entry ->
+                val route = entry.toRoute<WidgetMoment>()
+                WidgetMomentRoute(photoId = route.photoId, onBack = onBack)
+            }
             composable<ChatList> { entry ->
                 val mainEntry = remember(entry) { navController.getBackStackEntry<MainGraph>() }
                 val listViewModel = hiltViewModel<ChatListViewModel>(mainEntry)
@@ -141,6 +153,29 @@ fun AppNavHost(
                 )
             }
         }
+    }
+    // Wait for session restoration/login before requesting the widget's photo.
+    LaunchedEffect(widgetPhotoId, backStackEntry, currentUser) {
+        val photoId = widgetPhotoId
+        val inMainGraph = backStackEntry?.destination?.hierarchy
+            ?.any { it.hasRoute<MainGraph>() } == true
+        if (photoId.isNullOrBlank() || !inMainGraph) {
+            return@LaunchedEffect
+        }
+        // A restored navigation stack can exist before the in-memory user is restored.
+        if (currentUser?.isProfileCompleted != true) {
+            navController.navigate(AuthGraph) {
+                popUpTo<MainGraph> { inclusive = true }
+                launchSingleTop = true
+            }
+            return@LaunchedEffect
+        }
+
+        navController.navigate(WidgetMoment(photoId)) {
+            popUpTo<MainTabs>()
+            launchSingleTop = true
+        }
+        onWidgetPhotoOpened()
     }
     // Main and Profile own Back for tab selection and sign-out respectively.
     BackHandler(

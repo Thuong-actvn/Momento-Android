@@ -9,7 +9,11 @@ import androidx.navigation.compose.rememberNavController
 import com.example.momento.app.navigation.AppNavHost
 
 @Composable
-fun MomentoApp(onExit: () -> Unit) {
+fun MomentoApp(
+    onExit: () -> Unit,
+    widgetPhotoId: String? = null,
+    onWidgetPhotoOpened: () -> Unit = {},
+) {
     val navController = rememberNavController()
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -18,6 +22,8 @@ fun MomentoApp(onExit: () -> Unit) {
         AppNavHost(
             navController = navController,
             onExit = onExit,
+            widgetPhotoId = widgetPhotoId,
+            onWidgetPhotoOpened = onWidgetPhotoOpened,
             modifier = Modifier.fillMaxSize(),
         )
     }
