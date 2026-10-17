@@ -52,6 +52,7 @@ fun JournalDetailScreen(
     onRequestDelete: () -> Unit,
     onDismissDelete: () -> Unit,
     onDelete: () -> Unit,
+    backContentDescription: String = stringResource(R.string.journal_close_detail),
 ) {
     val item = state.item ?: return
     val ownerName = if (item.isOwn) {
@@ -75,6 +76,7 @@ fun JournalDetailScreen(
                 enabled = !state.isDeleting,
                 onClose = onClose,
                 onDelete = onRequestDelete,
+                backContentDescription = backContentDescription,
             )
             LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -115,13 +117,14 @@ private fun JournalDetailTopBar(
     enabled: Boolean,
     onClose: () -> Unit,
     onDelete: () -> Unit,
+    backContentDescription: String,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onClose, enabled = enabled) {
-            Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.journal_close_detail))
+            Icon(Icons.AutoMirrored.Outlined.ArrowBack, backContentDescription)
         }
         Text(
             text = stringResource(R.string.journal_detail_title),

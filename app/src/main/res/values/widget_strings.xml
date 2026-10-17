@@ -24,4 +24,5 @@
     <string name="widget_description">Ảnh mới nhất từ bạn bè</string>
     <string name="widget_add">Thêm vào màn hình chính</string>
     <string name="widget_add_manually">Nhấn giữ màn hình chính, chọn Tiện ích rồi tìm Momento để thêm widget.</string>
+    <string name="widget_open_error">Không thể mở khoảnh khắc. Vui lòng thử lại.</string>
 </resources>
