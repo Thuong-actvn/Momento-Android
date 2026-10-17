@@ -21,4 +21,6 @@
     <string name="widget_session_error">Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.</string>
     <string name="widget_save_error">Không thể lưu lựa chọn. Vui lòng chọn lại.</string>
     <string name="widget_retry">Thử lại</string>
+    <string name="widget_sign_in">Đăng nhập để xem khoảnh khắc</string>
+    <string name="widget_description">Ảnh mới nhất từ bạn bè</string>
 </resources>
