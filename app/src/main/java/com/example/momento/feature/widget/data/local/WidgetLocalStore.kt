@@ -27,6 +27,7 @@ data class StoredWidgetData(
     val account: WidgetAccount? = null,
     val snapshot: WidgetSnapshot? = null,
     val selectedFriendId: String? = null,
+    val currentPhotoId: String? = null,
 )
 
 class WidgetSessionChangedException : IllegalStateException("Widget account is no longer active")
@@ -98,7 +99,11 @@ class WidgetLocalStore @Inject constructor(
                 throw WidgetSessionChangedException()
             }
 
-            values[key] = json.encodeToString(state.copy(snapshot = snapshot))
+            val updatedState = state.copy(
+                snapshot = snapshot,
+                currentPhotoId = null,
+            )
+            values[key] = json.encodeToString(updatedState)
         }
     }
 
@@ -113,14 +118,48 @@ class WidgetLocalStore @Inject constructor(
             if (state.account != account) {
                 throw WidgetSessionChangedException()
             }
-            val isCurrentFriend = state.snapshot?.friends?.any { friend ->
-                friend.id == friendId
-            } == true
-            require(friendId == null || isCurrentFriend) {
-                "Select a current friend"
+            if (friendId != null) {
+                val isCurrentFriend = state.snapshot?.friends.orEmpty().any { friend ->
+                    friend.id == friendId
+                }
+                require(isCurrentFriend) { "Select a current friend" }
             }
 
-            val updatedState = state.copy(selectedFriendId = friendId)
+            val updatedState = state.copy(
+                selectedFriendId = friendId,
+                currentPhotoId = null,
+            )
+            values[key] = json.encodeToString(updatedState)
+        }
+    }
+
+    suspend fun showNextPhoto(
+        account: WidgetAccount,
+        checkSession: () -> Unit,
+    ) {
+        preferences.edit { values ->
+            checkSession()
+            val state = decode(values)
+            if (state.account != account) {
+                throw WidgetSessionChangedException()
+            }
+
+            val photos = state.snapshot?.photos.orEmpty()
+            if (state.selectedFriendId != null || photos.size < 2) {
+                return@edit
+            }
+
+            val savedIndex = photos.indexOfFirst { photo ->
+                photo.id == state.currentPhotoId
+            }
+            // Without a saved selection, the widget displays the first photo.
+            val currentIndex = if (savedIndex >= 0) savedIndex else 0
+            val nextIndex = if (currentIndex == photos.lastIndex) {
+                0
+            } else {
+                currentIndex + 1
+            }
+            val updatedState = state.copy(currentPhotoId = photos[nextIndex].id)
             values[key] = json.encodeToString(updatedState)
         }
     }

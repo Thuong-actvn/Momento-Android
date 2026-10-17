@@ -16,7 +16,10 @@ class WidgetSessionManager(
 ) {
     suspend fun current(): WidgetAccount? {
         val account = localStore.read().account ?: return null
-        return if (matchesIdentity(account)) account else null
+        if (!matchesIdentity(account)) {
+            return null
+        }
+        return account
     }
 
     fun matchesIdentity(account: WidgetAccount): Boolean {
@@ -58,10 +61,12 @@ class WidgetSessionManager(
                 is HttpException -> error.toApiException()
                 else -> error
             }
-            if (failure is ApiException &&
-                (failure.statusCode == 401 || failure.statusCode == 403 || failure.code == "USER_NOT_FOUND")
-            ) {
-                localStore.clearSession(account)
+            if (failure is ApiException) {
+                val accountUnavailable = failure.statusCode == 401 ||
+                    failure.statusCode == 403 || failure.code == "USER_NOT_FOUND"
+                if (accountUnavailable) {
+                    localStore.clearSession(account)
+                }
             }
             throw failure
         }
