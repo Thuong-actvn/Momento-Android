@@ -11,14 +11,21 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-fun JournalRoute(modifier: Modifier = Modifier) {
+fun JournalRoute(
+    modifier: Modifier = Modifier,
+    onNotificationsClick: () -> Unit = {},
+) {
     if (LocalInspectionMode.current) {
-        JournalScreen(modifier = modifier)
+        JournalScreen(
+            modifier = modifier,
+            onNotificationsClick = onNotificationsClick,
+        )
     } else {
         JournalRouteContent(
             viewModel = hiltViewModel(),
             detailViewModel = hiltViewModel(),
             modifier = modifier,
+            onNotificationsClick = onNotificationsClick,
         )
     }
 }
@@ -28,6 +35,7 @@ fun JournalRouteContent(
     viewModel: JournalViewModel,
     modifier: Modifier = Modifier,
     detailViewModel: JournalDetailViewModel = hiltViewModel(),
+    onNotificationsClick: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val detail by detailViewModel.state.collectAsStateWithLifecycle()
@@ -47,6 +55,7 @@ fun JournalRouteContent(
         onLoadMore = viewModel::loadMore,
         onRetryFriends = viewModel::retryFriends,
         onMomentClick = detailViewModel::open,
+        onNotificationsClick = onNotificationsClick,
     )
 
     if (detail.item != null) {

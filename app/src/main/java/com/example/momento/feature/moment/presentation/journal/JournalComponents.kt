@@ -40,7 +40,10 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 
 @Composable
-fun JournalTopBar(modifier: Modifier = Modifier) {
+fun JournalTopBar(
+    modifier: Modifier = Modifier,
+    onNotificationsClick: () -> Unit = {},
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -55,13 +58,12 @@ fun JournalTopBar(modifier: Modifier = Modifier) {
             overflow = TextOverflow.Ellipsis,
         )
         IconButton(
-            onClick = {},
-            enabled = false,
+            onClick = onNotificationsClick,
             modifier = Modifier.testTag("journal_notifications"),
         ) {
             Icon(
                 imageVector = Icons.Outlined.Notifications,
-                contentDescription = stringResource(R.string.journal_notifications_unavailable),
+                contentDescription = stringResource(R.string.notification_title),
                 modifier = Modifier.size(22.dp),
             )
         }

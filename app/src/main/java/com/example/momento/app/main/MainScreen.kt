@@ -81,6 +81,7 @@ fun MainScreen(
     onAvatarClick: (() -> Unit)? = null,
     onMessagesClick: (() -> Unit)? = null,
     onOpenConversation: ((String) -> Unit)? = null,
+    onNotificationsClick: () -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.FEED) }
 
@@ -100,6 +101,7 @@ fun MainScreen(
         onAvatarClick = onAvatarClick,
         onMessagesClick = onMessagesClick,
         onOpenConversation = onOpenConversation,
+        onNotificationsClick = onNotificationsClick,
     )
 }
 
@@ -112,6 +114,7 @@ fun MainScreenContent(
     onAvatarClick: (() -> Unit)? = null,
     onMessagesClick: (() -> Unit)? = null,
     onOpenConversation: ((String) -> Unit)? = null,
+    onNotificationsClick: () -> Unit = {},
 ) {
     val tabStateHolder = rememberSaveableStateHolder()
     var journalNavigationVisible by remember(selectedTab) { mutableStateOf(true) }
@@ -174,6 +177,7 @@ fun MainScreenContent(
                         onClose = { onTabSelected(MainTab.FEED) },
                     )
                     MainTab.JOURNAL -> JournalRoute(
+                        onNotificationsClick = onNotificationsClick,
                         modifier = Modifier
                             .fillMaxSize()
                             .nestedScroll(journalScrollConnection),

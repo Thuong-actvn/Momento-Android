@@ -1,5 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="notification_title">Thông báo</string>
+    <string name="notification_back">Quay lại</string>
+    <string name="notification_read_all">Đọc tất cả</string>
+    <string name="notification_retry">Thử lại</string>
+    <string name="notification_loading">Đang tải thông báo…</string>
+    <string name="notification_loading_more">Đang tải thông báo cũ hơn…</string>
+    <string name="notification_empty_title">Chưa có thông báo</string>
+    <string name="notification_empty_message">Lời mời kết bạn và bạn mới sẽ xuất hiện ở đây.</string>
+    <string name="notification_friend_request">đã gửi lời mời kết bạn</string>
+    <string name="notification_friend_accepted">đã chấp nhận lời mời kết bạn của bạn</string>
+    <string name="notification_unknown_actor">Một người dùng</string>
+    <string name="notification_unknown_message">Bạn có thông báo mới</string>
+    <string name="notification_unread">Chưa đọc</string>
+    <string name="notification_read">Đã đọc</string>
+    <string name="notification_just_now">Vừa xong</string>
+    <plurals name="notification_minutes_ago">
+        <item quantity="other">%1$d phút trước</item>
+    </plurals>
+    <plurals name="notification_hours_ago">
+        <item quantity="other">%1$d giờ trước</item>
+    </plurals>
     <string name="notification_load_error">Không thể tải thông báo. Vui lòng thử lại.</string>
     <string name="notification_load_more_error">Chưa tải được thông báo cũ hơn. Vui lòng thử lại.</string>
     <string name="notification_read_error">Chưa thể đánh dấu thông báo đã đọc. Vui lòng thử lại.</string>

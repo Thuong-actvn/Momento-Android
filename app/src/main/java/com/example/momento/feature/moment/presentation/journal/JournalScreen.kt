@@ -39,6 +39,7 @@ fun JournalScreen(
     onLoadMore: () -> Unit = {},
     onRetryFriends: () -> Unit = {},
     onMomentClick: (JournalItem) -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
 ) {
     val sections = journalSections(state.items)
 
@@ -47,7 +48,7 @@ fun JournalScreen(
         color = MaterialTheme.colorScheme.background,
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            JournalTopBar()
+            JournalTopBar(onNotificationsClick = onNotificationsClick)
             JournalFilters(
                 friends = state.friends,
                 selectedFilter = state.filter,

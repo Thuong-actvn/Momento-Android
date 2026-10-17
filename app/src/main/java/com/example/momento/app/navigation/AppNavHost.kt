@@ -25,6 +25,7 @@ import com.example.momento.feature.chat.presentation.list.ChatListRoute
 import com.example.momento.feature.chat.presentation.list.ChatListViewModel
 import com.example.momento.feature.chat.presentation.detail.ChatDetailRoute
 import com.example.momento.feature.friend.presentation.FriendRoute
+import com.example.momento.feature.notification.presentation.NotificationRoute
 import com.example.momento.feature.profile.presentation.editprofile.EditProfileRoute
 import com.example.momento.feature.profile.presentation.profile.ProfileRoute
 import com.example.momento.feature.widget.presentation.WidgetRoute
@@ -77,6 +78,11 @@ fun AppNavHost(
                             launchSingleTop = true
                         }
                     },
+                    onNotificationsClick = {
+                        navController.navigate(Notifications) {
+                            launchSingleTop = true
+                        }
+                    },
                     onOpenConversation = { userId ->
                         navController.navigate(ChatDetail(otherUserId = userId)) {
                             launchSingleTop = true
@@ -111,6 +117,16 @@ fun AppNavHost(
             }
             composable<Friends> {
                 FriendRoute(onBack = onBack)
+            }
+            composable<Notifications> {
+                NotificationRoute(
+                    onBack = onBack,
+                    onOpenFriends = {
+                        navController.navigate(Friends) {
+                            launchSingleTop = true
+                        }
+                    },
+                )
             }
             composable<WidgetSettings> {
                 WidgetRoute(
