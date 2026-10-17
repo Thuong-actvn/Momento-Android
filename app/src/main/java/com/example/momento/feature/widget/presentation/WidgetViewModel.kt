@@ -3,6 +3,7 @@ package com.example.momento.feature.widget.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.momento.R
+import com.example.momento.core.background.BackgroundWorkScheduler
 import com.example.momento.core.network.ApiException
 import com.example.momento.feature.widget.data.local.WidgetSessionChangedException
 import com.example.momento.feature.widget.domain.model.WidgetFriend
@@ -13,7 +14,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -21,7 +21,7 @@ data class WidgetUiState(
     val snapshot: WidgetSnapshot? = null,
     val selectedFriendId: String? = null,
     val currentPhotoId: String? = null,
-    val isRefreshing: Boolean = false,
+    val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val error: Int? = null,
     val selectionError: Int? = null,
@@ -32,20 +32,30 @@ data class WidgetUiState(
     val photos: List<WidgetPhoto>
         get() {
             val allPhotos = snapshot?.photos.orEmpty()
+            val friendId = selectedFriendId
+            if (friendId == null) {
+                return allPhotos
+            }
+
             return allPhotos.filter { photo ->
-                selectedFriendId == null || photo.friendId == selectedFriendId
+                photo.friendId == friendId
             }
         }
 
     val photo: WidgetPhoto?
         get() {
             val visiblePhotos = photos
-            return visiblePhotos.firstOrNull { photo -> photo.id == currentPhotoId }
-                ?: visiblePhotos.firstOrNull()
+            val selectedPhoto = visiblePhotos.firstOrNull { photo ->
+                photo.id == currentPhotoId
+            }
+            return selectedPhoto ?: visiblePhotos.firstOrNull()
         }
 
     val sender: WidgetFriend?
-        get() = friends.firstOrNull { friend -> friend.id == photo?.friendId }
+        get() {
+            val currentPhoto = photo ?: return null
+            return friends.firstOrNull { friend -> friend.id == currentPhoto.friendId }
+        }
 
     val hasUnavailableFriend: Boolean
         get() {
@@ -60,51 +70,49 @@ data class WidgetUiState(
 @HiltViewModel
 class WidgetViewModel @Inject constructor(
     private val repository: WidgetRepository,
+    private val workScheduler: BackgroundWorkScheduler,
 ) : ViewModel() {
     private val _state = MutableStateFlow(WidgetUiState())
     val state = _state.asStateFlow()
 
     init {
         viewModelScope.launch {
-            combine(
-                repository.snapshot,
-                repository.selectedFriendId,
-            ) { snapshot, selectedFriendId ->
-                snapshot to selectedFriendId
-            }.collect { (snapshot, selectedFriendId) ->
+            repository.data.collect { data ->
                 _state.update { current ->
+                    val sourceChanged = current.selectedFriendId != data.selectedFriendId
+                    val currentPhotoId = if (sourceChanged) null else current.currentPhotoId
                     current.copy(
-                        snapshot = snapshot,
-                        selectedFriendId = selectedFriendId,
-                        currentPhotoId = if (current.selectedFriendId == selectedFriendId) {
-                            current.currentPhotoId
-                        } else {
-                            null
-                        },
+                        snapshot = data.snapshot,
+                        selectedFriendId = data.selectedFriendId,
+                        currentPhotoId = currentPhotoId,
                     )
                 }
             }
         }
-        refresh()
+        loadData()
     }
 
-    fun refresh() {
-        if (_state.value.isRefreshing) {
+    fun loadData() {
+        if (_state.value.isLoading) {
             return
         }
 
         _state.update { current ->
             current.copy(
-                isRefreshing = true,
+                isLoading = true,
                 error = null,
             )
         }
 
         viewModelScope.launch {
             val result = repository.refresh()
+            workScheduler.updateWidgets()
             val exception = result.exceptionOrNull()
-            val sessionExpired = exception is WidgetSessionChangedException ||
-                (exception is ApiException && exception.statusCode in listOf(401, 403))
+            val sessionExpired = when (exception) {
+                is WidgetSessionChangedException -> true
+                is ApiException -> exception.statusCode == 401 || exception.statusCode == 403
+                else -> false
+            }
             val errorMessage = when {
                 exception == null -> null
                 sessionExpired -> R.string.widget_session_error
@@ -113,7 +121,7 @@ class WidgetViewModel @Inject constructor(
 
             _state.update { current ->
                 current.copy(
-                    isRefreshing = false,
+                    isLoading = false,
                     currentPhotoId = if (result.isSuccess) {
                         null
                     } else {
@@ -140,6 +148,7 @@ class WidgetViewModel @Inject constructor(
 
         viewModelScope.launch {
             val result = repository.selectFriend(friendId)
+            workScheduler.updateWidgets()
             val errorMessage = if (result.isFailure) {
                 R.string.widget_save_error
             } else {

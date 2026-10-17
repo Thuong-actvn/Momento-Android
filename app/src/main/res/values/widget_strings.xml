@@ -3,7 +3,6 @@
     <string name="widget_screen_title">Tiện ích</string>
     <string name="widget_back">Quay lại</string>
     <string name="widget_preview_label">XEM TRƯỚC · 2 × 2</string>
-    <string name="widget_refresh">Làm mới ảnh</string>
     <string name="widget_next">Khoảnh khắc tiếp theo</string>
     <string name="widget_photo_description">Khoảnh khắc của %1$s</string>
     <string name="widget_photo_error">Không tải được ảnh</string>

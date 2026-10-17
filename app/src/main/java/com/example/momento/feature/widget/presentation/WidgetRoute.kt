@@ -25,7 +25,7 @@ fun WidgetRoute(
     WidgetScreen(
         state = state,
         onBack = onBack,
-        onRefresh = viewModel::refresh,
+        onRetry = viewModel::loadData,
         onNextPhoto = viewModel::nextPhoto,
         onSelectFriend = viewModel::selectFriend,
         onFriendsClick = onFriendsClick,

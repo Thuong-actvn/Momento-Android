@@ -7,6 +7,7 @@ import com.example.momento.feature.widget.data.local.WidgetLocalStore
 import com.example.momento.feature.widget.data.local.WidgetSessionChangedException
 import com.example.momento.feature.widget.data.remote.WidgetApi
 import com.example.momento.feature.widget.data.remote.toWidgetSnapshot
+import com.example.momento.feature.widget.domain.model.WidgetData
 import com.example.momento.feature.widget.domain.model.WidgetSnapshot
 import com.example.momento.feature.widget.domain.repository.WidgetRepository
 import javax.inject.Inject
@@ -25,51 +26,49 @@ class WidgetRepositoryImpl @Inject constructor(
 ) : WidgetRepository {
     private val refreshMutex = Mutex()
 
-    override val snapshot: Flow<WidgetSnapshot?> = localStore.data.map { state ->
-        val account = state.account ?: return@map null
-        if (!sessionManager.matchesIdentity(account)) {
-            return@map null
+    override val data: Flow<WidgetData> = localStore.data.map { storedData ->
+        val account = storedData.account
+        if (account == null || !sessionManager.matchesIdentity(account)) {
+            return@map WidgetData()
         }
 
-        state.snapshot
+        WidgetData(
+            snapshot = storedData.snapshot,
+            selectedFriendId = storedData.selectedFriendId,
+        )
     }
 
-    override val selectedFriendId: Flow<String?> = localStore.data.map { state ->
-        val account = state.account ?: return@map null
-        if (!sessionManager.matchesIdentity(account)) {
-            return@map null
-        }
+    override suspend fun selectFriend(friendId: String?): Result<Unit> {
+        return suspendRunCatching {
+            val account = sessionManager.current()
+                ?: throw WidgetSessionChangedException()
 
-        state.selectedFriendId
-    }
-
-    override suspend fun selectFriend(friendId: String?): Result<Unit> = suspendRunCatching {
-        val account = sessionManager.current()
-            ?: throw WidgetSessionChangedException()
-
-        localStore.saveSelectedFriend(
-            account = account,
-            friendId = friendId,
-        ) {
-            sessionManager.checkIdentity(account)
+            localStore.saveSelectedFriend(
+                account = account,
+                friendId = friendId,
+            ) {
+                sessionManager.checkIdentity(account)
+            }
         }
     }
 
-    override suspend fun refresh(): Result<WidgetSnapshot> = suspendRunCatching {
-        refreshMutex.withLock {
-            sessionManager.withAccount { account ->
-                val widgetItems = widgetApi.getPhotos()
-                val friends = friendApi.getFriends().requireData()
-                val snapshot = toWidgetSnapshot(
-                    items = widgetItems,
-                    friends = friends,
-                    updatedAtEpochMillis = System.currentTimeMillis(),
-                )
+    override suspend fun refresh(): Result<WidgetSnapshot> {
+        return suspendRunCatching {
+            refreshMutex.withLock {
+                sessionManager.withAccount { account ->
+                    val widgetItems = widgetApi.getPhotos()
+                    val friends = friendApi.getFriends().requireData()
+                    val snapshot = toWidgetSnapshot(
+                        items = widgetItems,
+                        friends = friends,
+                        updatedAtEpochMillis = System.currentTimeMillis(),
+                    )
 
-                localStore.saveSnapshot(account, snapshot) {
-                    sessionManager.checkIdentity(account)
+                    localStore.saveSnapshot(account, snapshot) {
+                        sessionManager.checkIdentity(account)
+                    }
+                    snapshot
                 }
-                snapshot
             }
         }
     }

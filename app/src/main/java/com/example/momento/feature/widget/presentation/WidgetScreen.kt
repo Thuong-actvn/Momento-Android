@@ -45,7 +45,7 @@ import com.example.momento.ui.components.MomentoTopBar
 fun WidgetScreen(
     state: WidgetUiState,
     onBack: () -> Unit,
-    onRefresh: () -> Unit,
+    onRetry: () -> Unit,
     onNextPhoto: () -> Unit,
     onSelectFriend: (String?) -> Unit,
     onFriendsClick: () -> Unit,
@@ -98,7 +98,6 @@ fun WidgetScreen(
                         )
                         WidgetPhotoCard(
                             state = state,
-                            onRefresh = onRefresh,
                             onNextPhoto = onNextPhoto,
                         )
                     }
@@ -109,8 +108,8 @@ fun WidgetScreen(
                     MomentoRetryMessage(
                         message = stringResource(error),
                         actionText = stringResource(R.string.widget_retry),
-                        onRetry = onRefresh,
-                        enabled = !state.isRefreshing,
+                        onRetry = onRetry,
+                        enabled = !state.isLoading,
                     )
                 }
             }

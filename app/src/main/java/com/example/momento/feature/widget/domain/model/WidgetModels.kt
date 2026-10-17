@@ -25,3 +25,8 @@ data class WidgetSnapshot(
     val friends: List<WidgetFriend> = emptyList(),
     val updatedAtEpochMillis: Long,
 )
+
+data class WidgetData(
+    val snapshot: WidgetSnapshot? = null,
+    val selectedFriendId: String? = null,
+)
