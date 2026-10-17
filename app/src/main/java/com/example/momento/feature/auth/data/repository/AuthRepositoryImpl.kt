@@ -13,6 +13,7 @@ import com.example.momento.feature.auth.data.remote.dto.LoginRequest
 import com.example.momento.feature.auth.domain.repository.AuthProvider
 import com.example.momento.feature.auth.domain.repository.AuthRepository
 import com.example.momento.feature.widget.data.local.WidgetLocalStore
+import com.example.momento.feature.widget.presentation.home.WidgetRenderer
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.Lazy
@@ -34,6 +35,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val widgetStore: WidgetLocalStore,
     private val workScheduler: BackgroundWorkScheduler,
     private val messaging: Lazy<FirebaseMessaging>,
+    private val widgetRenderer: WidgetRenderer,
 ) : AuthRepository {
     override val currentUser = userStore.currentUser
     private val backgroundMutex = Mutex()
@@ -55,6 +57,7 @@ class AuthRepositoryImpl @Inject constructor(
         if (firebaseUid == null) {
             backgroundMutex.withLock {
                 widgetStore.clearSession { userStore.checkSession(session) }
+                widgetRenderer.clear()
                 workScheduler.cancelSessionWork()
                 messaging.get().isAutoInitEnabled = false
             }
@@ -88,6 +91,7 @@ class AuthRepositoryImpl @Inject constructor(
         try {
             backgroundMutex.withLock {
                 widgetStore.clearSession()
+                widgetRenderer.clear()
                 workScheduler.cancelSessionWork()
                 messaging.get().isAutoInitEnabled = false
                 deleteFcmToken()
@@ -130,6 +134,7 @@ class AuthRepositoryImpl @Inject constructor(
 
             if (!user.isProfileCompleted) {
                 widgetStore.clearSession(checkSession = checkSession)
+                widgetRenderer.clear()
                 workScheduler.cancelSessionWork()
                 messaging.get().isAutoInitEnabled = false
                 return@withLock
@@ -137,6 +142,7 @@ class AuthRepositoryImpl @Inject constructor(
 
             widgetStore.activate(firebaseUid, user.id, checkSession)
             checkSession()
+            workScheduler.updateWidgets()
             messaging.get().isAutoInitEnabled = true
             workScheduler.registerFcmToken()
             workScheduler.refreshWidgetData()
