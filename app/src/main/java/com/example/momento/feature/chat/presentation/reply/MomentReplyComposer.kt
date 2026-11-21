@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,11 @@ fun MomentReplyComposer(
     onCheckDelivery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
+    val handleSend = {
+        focusManager.clearFocus()
+        onSend()
+    }
     val colors = MaterialTheme.colorScheme
     val placeholder = stringResource(
         if (state.isOwnMoment) R.string.chat_reply_own_moment else R.string.feed_reply_placeholder,
@@ -63,14 +69,14 @@ fun MomentReplyComposer(
             ChatInput(
                 value = state.draft,
                 onValueChange = onDraftChange,
-                onSend = onSend,
+                onSend = handleSend,
                 enabled = state.canReply,
                 isError = state.isDraftTooLong,
                 placeholder = placeholder,
                 modifier = Modifier.weight(1f).testTag("feed_reply"),
             )
             FilledIconButton(
-                onClick = onSend,
+                onClick = handleSend,
                 enabled = state.canSend,
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = colors.surfaceContainerLow,
