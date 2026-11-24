@@ -3,6 +3,7 @@ package com.example.momento.core.realtime
 import com.example.momento.core.common.suspendRunCatching
 import com.example.momento.core.user.data.CurrentUserStore
 import com.example.momento.feature.chat.data.realtime.ChatRealtimeHandler
+import com.example.momento.feature.notification.data.realtime.NotificationUpdates
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,7 @@ class RealtimeManager @Inject constructor(
     private val socket: RealtimeSocketClient,
     private val network: RealtimeNetworkMonitor,
     private val chat: ChatRealtimeHandler,
+    private val notifications: NotificationUpdates,
     private val users: CurrentUserStore,
     scope: CoroutineScope,
 ) {
@@ -67,6 +69,7 @@ class RealtimeManager @Inject constructor(
         }
 
         try {
+            notifications.requestRefresh(session)
             launch {
                 syncChat(session, syncRequested)
             }
@@ -91,6 +94,7 @@ class RealtimeManager @Inject constructor(
                         users.checkSession(session)
                         state.value = RealtimeConnectionState.CONNECTED
                         syncRequested.value = true
+                        notifications.requestRefresh(session)
                     },
                     onMessage = { body ->
                         if (handleMessage(session, body)) {
@@ -112,6 +116,9 @@ class RealtimeManager @Inject constructor(
             val event = json.decodeFromString<Envelope>(body)
             if (event.type == "CHAT_MESSAGE" && event.payload != null) {
                 return chat.receiveMessage(session, event.payload)
+            }
+            if (event.type == "NOTIFICATION") {
+                notifications.requestRefresh(session)
             }
         } catch (_: Exception) {
             // A malformed message can be skipped without closing the socket.

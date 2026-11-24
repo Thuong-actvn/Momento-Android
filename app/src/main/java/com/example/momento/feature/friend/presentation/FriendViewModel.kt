@@ -11,6 +11,7 @@ import com.example.momento.feature.friend.data.remote.FriendException
 import com.example.momento.feature.friend.domain.repository.FriendRepository
 import com.example.momento.feature.friend.domain.model.FriendRequest
 import com.example.momento.feature.friend.domain.model.FriendRequestAction
+import com.example.momento.feature.notification.data.realtime.NotificationUpdates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineStart
@@ -20,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -56,6 +58,7 @@ data class FriendUiState(
 class FriendViewModel @Inject constructor(
     private val repository: FriendRepository,
     private val userStore: CurrentUserStore,
+    private val updates: NotificationUpdates,
 ) : ViewModel() {
     private val _state = MutableStateFlow(FriendUiState())
     val state = _state.asStateFlow()
@@ -69,6 +72,8 @@ class FriendViewModel @Inject constructor(
     private var accountVersion = 0L
     private var nextSearchPage = 0
     private var ownerId = userStore.currentUser.value?.id
+    private var notificationVersion = updates.version.value
+    private var realtimeRefreshRequested = false
 
     init {
         viewModelScope.launch {
@@ -80,6 +85,16 @@ class FriendViewModel @Inject constructor(
                     _state.value = FriendUiState()
                     if (userId != null) refreshFriends()
                     else _state.update { it.copy(error = R.string.friend_session_error) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            updates.version.collectLatest { version ->
+                if (version != notificationVersion) {
+                    notificationVersion = version
+                    delay(500)
+                    realtimeRefreshRequested = true
+                    refreshIfRequested()
                 }
             }
         }
@@ -97,6 +112,15 @@ class FriendViewModel @Inject constructor(
         relationshipVersion++
         loadFriends(force = true)
         loadRequests(force = true)
+    }
+
+    private fun refreshIfRequested() {
+        if (!realtimeRefreshRequested) return
+        if (ownerId == null || userStore.currentUser.value?.id != ownerId) return
+        val current = _state.value
+        if (current.isRefreshing || current.isRefreshingRequests) return
+        realtimeRefreshRequested = false
+        refreshRelationships()
     }
 
     private fun loadRequests(force: Boolean) {
@@ -124,6 +148,7 @@ class FriendViewModel @Inject constructor(
                         pendingError = error.messageRes(R.string.friend_pending_load_error)) }
                 },
             )
+            refreshIfRequested()
         }
     }
 
@@ -258,6 +283,7 @@ class FriendViewModel @Inject constructor(
                     }
                 },
             )
+            refreshIfRequested()
         }
     }
 
@@ -403,6 +429,7 @@ class FriendViewModel @Inject constructor(
     }
 
     private fun cancelOperations() {
+        realtimeRefreshRequested = false
         accountVersion++
         relationshipVersion++
         searchVersion++

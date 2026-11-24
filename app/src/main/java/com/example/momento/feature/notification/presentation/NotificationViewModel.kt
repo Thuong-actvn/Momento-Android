@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.momento.R
+import com.example.momento.feature.notification.data.realtime.NotificationUpdates
 import com.example.momento.feature.notification.data.remote.NotificationError
 import com.example.momento.feature.notification.data.remote.NotificationException
 import com.example.momento.feature.notification.domain.model.NotificationPage
@@ -14,9 +15,11 @@ import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -24,6 +27,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class NotificationViewModel @Inject constructor(
     private val repository: NotificationRepository,
+    private val updates: NotificationUpdates,
 ) : ViewModel() {
     private val _state = MutableStateFlow(NotificationUiState())
     val state = _state.asStateFlow()
@@ -32,9 +36,26 @@ class NotificationViewModel @Inject constructor(
     private var nextCursor: String? = null
     private var nextEventId = 0L
     private val readIds = mutableSetOf<String>()
+    private var notificationVersion = updates.version.value
+    private var realtimeRefreshRequested = false
 
     init {
+        observeUpdates()
         refresh()
+    }
+
+    private fun observeUpdates() {
+        viewModelScope.launch {
+            updates.version.collectLatest { version ->
+                if (version != notificationVersion) {
+                    notificationVersion = version
+                    // Group nearby events and allow the backend transaction to finish.
+                    delay(500)
+                    realtimeRefreshRequested = true
+                    refreshIfRequested()
+                }
+            }
+        }
     }
 
     fun refresh() {
@@ -139,7 +160,18 @@ class NotificationViewModel @Inject constructor(
                 },
                 onFailure = { handleWriteError(it, R.string.notification_read_all_error) },
             )
+            refreshIfRequested()
         }
+    }
+
+    private fun refreshIfRequested() {
+        if (!realtimeRefreshRequested) return
+        val current = _state.value
+        if (current.isLoading || current.isRefreshing || current.isLoadingMore || current.isMarkingAllAsRead) {
+            return
+        }
+        realtimeRefreshRequested = false
+        refresh()
     }
 
     private fun loadPage(append: Boolean) {
@@ -183,6 +215,7 @@ class NotificationViewModel @Inject constructor(
                 },
                 onFailure = { handlePageError(append, it) },
             )
+            refreshIfRequested()
         }
     }
 
@@ -232,9 +265,12 @@ class NotificationViewModel @Inject constructor(
         pageJob = null
         nextCursor = null
         readIds.clear()
+        realtimeRefreshRequested = false
         _state.value = NotificationUiState(
             error = R.string.notification_session_error,
         )
+        // A successful retry must still receive later realtime updates.
+        observeUpdates()
         return true
     }
 
