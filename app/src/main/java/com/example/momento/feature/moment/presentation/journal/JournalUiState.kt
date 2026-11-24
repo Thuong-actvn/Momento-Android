@@ -40,5 +40,6 @@ data class JournalUiState(
 enum class JournalLoad {
     INITIAL,
     REFRESH,
+    SYNC,
     MORE,
 }

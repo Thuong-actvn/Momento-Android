@@ -21,13 +21,14 @@ object JournalStateMapper {
             result.errors.firstOrNull()?.let(::photoError)
         }
 
-        val oldItems = if (load == JournalLoad.MORE || !result.hasSuccessfulPage) {
+        val oldItems = if (load == JournalLoad.MORE || load == JournalLoad.SYNC || !result.hasSuccessfulPage) {
             current.items
         } else {
             emptyList()
         }
         val newItems = result.moments.map { JournalItem(moment = it) }
-        val items = (oldItems + newItems).distinctBy { it.moment.id }
+        val combined = if (load == JournalLoad.SYNC) newItems + oldItems else oldItems + newItems
+        val items = combined.distinctBy { it.moment.id }
         val refreshFailed = load == JournalLoad.REFRESH && !result.hasSuccessfulPage
         val fullError = items.isEmpty() || refreshFailed
 

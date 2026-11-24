@@ -9,6 +9,8 @@ import com.example.momento.core.user.domain.model.PublicProfile
 import com.example.momento.feature.friend.data.remote.FriendError
 import com.example.momento.feature.friend.data.remote.FriendException
 import com.example.momento.feature.friend.domain.repository.FriendRepository
+import com.example.momento.feature.moment.data.realtime.MomentUpdates
+import com.example.momento.feature.moment.data.realtime.loadMomentUpdates
 import com.example.momento.feature.moment.data.remote.MomentError
 import com.example.momento.feature.moment.data.remote.MomentException
 import com.example.momento.feature.moment.domain.model.CursorPage
@@ -20,9 +22,11 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -32,6 +36,7 @@ class FeedViewModel @Inject constructor(
     private val friends: FriendRepository,
     private val userStore: CurrentUserStore,
     private val savedState: SavedStateHandle,
+    private val updates: MomentUpdates,
 ) : ViewModel() {
     private val _state = MutableStateFlow(FeedUiState(isLoading = true))
     val state = _state.asStateFlow()
@@ -42,6 +47,8 @@ class FeedViewModel @Inject constructor(
     private var ownerId: String? = null
     private var nextCursor: String? = null
     private val usedCursors = mutableSetOf<String>()
+    private var momentVersion = updates.version.value
+    private var realtimeRefreshRequested = false
 
     init {
         viewModelScope.launch {
@@ -50,6 +57,7 @@ class FeedViewModel @Inject constructor(
                     ownerId = null
                     clearSessionData()
                 } else if (user.id != ownerId) {
+                    realtimeRefreshRequested = false
                     feedJob?.cancel()
                     friendsJob?.cancel()
                     reactionJob?.cancel()
@@ -72,6 +80,26 @@ class FeedViewModel @Inject constructor(
                 }
             }
         }
+        viewModelScope.launch {
+            updates.version.collectLatest { version ->
+                if (version != momentVersion) {
+                    momentVersion = version
+                    delay(500)
+                    realtimeRefreshRequested = true
+                    refreshIfRequested()
+                }
+            }
+        }
+    }
+
+    private fun refreshIfRequested() {
+        if (!realtimeRefreshRequested) return
+        if (ownerId == null || userStore.currentUser.value?.id != ownerId) return
+        val current = _state.value
+        if (current.isLoading || current.isRefreshing || current.isLoadingMore) return
+        realtimeRefreshRequested = false
+        loadFeed(FeedLoad.SYNC)
+        loadFriends()
     }
 
     fun selectFilter(filter: FeedFilter) {
@@ -178,7 +206,7 @@ class FeedViewModel @Inject constructor(
             current.copy(
                 items = if (load == FeedLoad.INITIAL) emptyList() else current.items,
                 isLoading = load == FeedLoad.INITIAL || current.items.isEmpty(),
-                isRefreshing = load == FeedLoad.REFRESH,
+                isRefreshing = load == FeedLoad.REFRESH || load == FeedLoad.SYNC,
                 isLoadingMore = load == FeedLoad.MORE,
                 hasMore = if (load == FeedLoad.INITIAL) false else current.hasMore,
                 error = null,
@@ -186,10 +214,12 @@ class FeedViewModel @Inject constructor(
             )
         }
         feedJob = viewModelScope.launch {
-            val result = when (filter) {
-                FeedFilter.All -> moments.getFeed(cursor = cursor)
-                FeedFilter.OnlyMe -> moments.getMyMoments(cursor = cursor)
-                is FeedFilter.Friend -> moments.getFriendFeed(filter.id, cursor = cursor)
+            val result = if (load == FeedLoad.SYNC) {
+                loadMomentUpdates(_state.value.items.firstOrNull()?.moment?.id) { pageCursor ->
+                    requestPage(filter, pageCursor)
+                }
+            } else {
+                requestPage(filter, cursor)
             }
             currentCoroutineContext().ensureActive()
             if (userStore.currentUser.value?.id != userId || _state.value.filter != filter) {
@@ -201,22 +231,38 @@ class FeedViewModel @Inject constructor(
             }.onFailure { error ->
                 showFeedError(error, filter, load)
             }
+            refreshIfRequested()
+        }
+    }
+
+    private suspend fun requestPage(filter: FeedFilter, cursor: String?): Result<CursorPage<Moment>> {
+        return when (filter) {
+            FeedFilter.All -> moments.getFeed(cursor = cursor)
+            FeedFilter.OnlyMe -> moments.getMyMoments(cursor = cursor)
+            is FeedFilter.Friend -> moments.getFriendFeed(filter.id, cursor = cursor)
         }
     }
 
     private fun showPage(page: CursorPage<Moment>, load: FeedLoad, requestedCursor: String?) {
-        if (load != FeedLoad.MORE) usedCursors.clear()
-        val cursorInvalid = page.hasMore && (
+        val keepLoadedPages = load == FeedLoad.SYNC && _state.value.items.isNotEmpty()
+        if (load != FeedLoad.MORE && !keepLoadedPages) usedCursors.clear()
+        val cursorInvalid = !keepLoadedPages && page.hasMore && (
             page.nextCursor.isNullOrBlank() || page.nextCursor == requestedCursor ||
                 page.nextCursor in usedCursors || page.data.isEmpty()
             )
         // Keep the last usable request cursor so an explicit retry can repeat that page.
-        nextCursor = if (cursorInvalid) requestedCursor else page.nextCursor
-        if (requestedCursor != null && !cursorInvalid) usedCursors.add(requestedCursor)
+        if (!keepLoadedPages) {
+            nextCursor = if (cursorInvalid) requestedCursor else page.nextCursor
+            if (requestedCursor != null && !cursorInvalid) usedCursors.add(requestedCursor)
+        }
 
         _state.update { current ->
             val newItems = page.data.map { FeedItem(moment = it) }
-            val items = if (load == FeedLoad.MORE) current.items + newItems else newItems
+            val items = when (load) {
+                FeedLoad.MORE -> current.items + newItems
+                FeedLoad.SYNC -> newItems + current.items
+                else -> newItems
+            }
             val uniqueItems = withOwners(items.distinctBy { it.moment.id }, current.friends)
             val visibleId = if (load == FeedLoad.REFRESH) {
                 uniqueItems.firstOrNull()?.moment?.id
@@ -228,7 +274,7 @@ class FeedViewModel @Inject constructor(
                 items = uniqueItems,
                 visibleMomentId = visibleId,
                 pageVersion = if (load == FeedLoad.MORE) current.pageVersion else current.pageVersion + 1,
-                hasMore = page.hasMore,
+                hasMore = if (keepLoadedPages) current.hasMore else page.hasMore,
                 isLoading = false,
                 isRefreshing = false,
                 isLoadingMore = false,
@@ -379,6 +425,7 @@ class FeedViewModel @Inject constructor(
     }
 
     private fun clearSessionData() {
+        realtimeRefreshRequested = false
         feedJob?.cancel()
         friendsJob?.cancel()
         reactionJob?.cancel()
@@ -393,5 +440,6 @@ class FeedViewModel @Inject constructor(
 private enum class FeedLoad {
     INITIAL,
     REFRESH,
+    SYNC,
     MORE,
 }

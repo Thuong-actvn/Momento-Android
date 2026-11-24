@@ -1,5 +1,6 @@
 package com.example.momento.feature.moment.presentation.journal
 
+import com.example.momento.feature.moment.data.realtime.loadMomentUpdates
 import com.example.momento.feature.moment.domain.model.CursorPage
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.repository.MomentRepository
@@ -21,15 +22,26 @@ class JournalPhotoLoader(private val moments: MomentRepository) {
         pages = emptyMap()
     }
 
-    suspend fun load(filter: JournalFilter, loadMore: Boolean): JournalPhotoResult {
-        val requestPages = if (loadMore) pages else newPages(filter)
-        val pendingPages = requestPages.filterValues { it.hasMore }
+    suspend fun load(filter: JournalFilter, load: JournalLoad): JournalPhotoResult {
+        val keepPages = load == JournalLoad.MORE || load == JournalLoad.SYNC
+        val requestPages = if (keepPages && pages.isNotEmpty()) pages else newPages(filter)
+        val pendingPages = if (load == JournalLoad.MORE) {
+            requestPages.filterValues { it.hasMore }
+        } else {
+            requestPages
+        }
 
         // All requests both endpoints concurrently, without mixing their cursors.
         val results = coroutineScope {
             pendingPages.map { (source, page) ->
                 async {
-                    val result = requestPage(source, filter, page.cursor)
+                    val result = if (load == JournalLoad.SYNC) {
+                        loadMomentUpdates(page.latestMomentId) { cursor ->
+                            requestPage(source, filter, cursor)
+                        }
+                    } else {
+                        requestPage(source, filter, page.cursor)
+                    }
                     JournalPageResult(source = source, result = result)
                 }
             }.awaitAll()
@@ -50,7 +62,10 @@ class JournalPhotoLoader(private val moments: MomentRepository) {
             newMoments.addAll(page.data)
 
             val tracker = requestPages.getValue(pageResult.source)
-            if (!tracker.accept(page)) {
+            if (load == JournalLoad.SYNC && tracker.latestMomentId != null) {
+                // Older pages keep their cursors; only advance the checkpoint after a complete catch-up.
+                tracker.latestMomentId = page.data.firstOrNull()?.id ?: tracker.latestMomentId
+            } else if (!tracker.accept(page)) {
                 hasInvalidCursor = true
             }
         }
@@ -114,6 +129,7 @@ private data class JournalPageResult(
 )
 
 private class JournalPage {
+    var latestMomentId: String? = null
     var cursor: String? = null
     var hasMore: Boolean = true
     private val usedCursors = mutableSetOf<String>()
@@ -127,6 +143,7 @@ private class JournalPage {
             return false
         }
 
+        if (latestMomentId == null) latestMomentId = page.data.firstOrNull()?.id
         cursor?.let { usedCursors.add(it) }
         cursor = page.nextCursor
         hasMore = page.hasMore

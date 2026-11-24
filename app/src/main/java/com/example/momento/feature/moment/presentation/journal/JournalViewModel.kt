@@ -9,6 +9,7 @@ import com.example.momento.core.user.domain.model.PublicProfile
 import com.example.momento.feature.friend.data.remote.FriendError
 import com.example.momento.feature.friend.data.remote.FriendException
 import com.example.momento.feature.friend.domain.repository.FriendRepository
+import com.example.momento.feature.moment.data.realtime.MomentUpdates
 import com.example.momento.feature.moment.data.remote.MomentError
 import com.example.momento.feature.moment.data.remote.MomentException
 import com.example.momento.feature.moment.domain.repository.MomentRepository
@@ -17,9 +18,11 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -29,6 +32,7 @@ class JournalViewModel @Inject constructor(
     private val friends: FriendRepository,
     private val userStore: CurrentUserStore,
     private val savedState: SavedStateHandle,
+    private val updates: MomentUpdates,
 ) : ViewModel() {
     private val _state = MutableStateFlow(JournalUiState(isLoading = true))
     val state = _state.asStateFlow()
@@ -38,6 +42,8 @@ class JournalViewModel @Inject constructor(
     private var ownerId: String? = null
     private val photoLoader = JournalPhotoLoader(moments)
     private val deletedMomentIds = mutableSetOf<String>()
+    private var momentVersion = updates.version.value
+    private var realtimeRefreshRequested = false
 
     init {
         viewModelScope.launch {
@@ -45,6 +51,7 @@ class JournalViewModel @Inject constructor(
                 if (user == null) {
                     clearSession()
                 } else if (user.id != ownerId) {
+                    realtimeRefreshRequested = false
                     photosJob?.cancel()
                     friendsJob?.cancel()
                     photoLoader.reset()
@@ -64,6 +71,26 @@ class JournalViewModel @Inject constructor(
                 }
             }
         }
+        viewModelScope.launch {
+            updates.version.collectLatest { version ->
+                if (version != momentVersion) {
+                    momentVersion = version
+                    delay(500)
+                    realtimeRefreshRequested = true
+                    refreshIfRequested()
+                }
+            }
+        }
+    }
+
+    private fun refreshIfRequested() {
+        if (!realtimeRefreshRequested) return
+        if (ownerId == null || userStore.currentUser.value?.id != ownerId) return
+        val current = _state.value
+        if (current.isLoading || current.isRefreshing || current.isLoadingMore) return
+        realtimeRefreshRequested = false
+        loadPhotos(JournalLoad.SYNC)
+        loadFriends()
     }
 
     fun selectFilter(filter: JournalFilter) {
@@ -120,12 +147,13 @@ class JournalViewModel @Inject constructor(
         photosJob?.cancel()
         val filter = _state.value.filter
         if (load == JournalLoad.MORE && !photoLoader.hasMore) return
+        if (load == JournalLoad.INITIAL) photoLoader.reset()
 
         _state.update { current ->
             current.copy(
                 items = if (load == JournalLoad.INITIAL) emptyList() else current.items,
                 isLoading = load == JournalLoad.INITIAL,
-                isRefreshing = load == JournalLoad.REFRESH,
+                isRefreshing = load == JournalLoad.REFRESH || load == JournalLoad.SYNC,
                 isLoadingMore = load == JournalLoad.MORE,
                 hasMore = if (load == JournalLoad.INITIAL) false else current.hasMore,
                 error = null,
@@ -133,7 +161,7 @@ class JournalViewModel @Inject constructor(
             )
         }
         photosJob = viewModelScope.launch {
-            val result = photoLoader.load(filter = filter, loadMore = load == JournalLoad.MORE)
+            val result = photoLoader.load(filter = filter, load = load)
             currentCoroutineContext().ensureActive()
             if (userStore.currentUser.value?.id != userId || _state.value.filter != filter) {
                 return@launch
@@ -159,6 +187,7 @@ class JournalViewModel @Inject constructor(
                     user = userStore.currentUser.value,
                 )
             }
+            refreshIfRequested()
         }
     }
 
@@ -234,6 +263,7 @@ class JournalViewModel @Inject constructor(
     }
 
     private fun clearSession() {
+        realtimeRefreshRequested = false
         photosJob?.cancel()
         friendsJob?.cancel()
         ownerId = null
