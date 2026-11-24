@@ -1,11 +1,9 @@
-package com.example.momento.feature.chat.data.realtime
+package com.example.momento.core.realtime
 
 import com.example.momento.core.network.AuthInterceptor
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import okhttp3.OkHttpClient
 import org.hildan.krossbow.stomp.StompClient
 import org.hildan.krossbow.stomp.subscribeText
@@ -13,26 +11,17 @@ import org.hildan.krossbow.stomp.use
 import org.hildan.krossbow.websocket.okhttp.OkHttpWebSocketClient
 import retrofit2.Retrofit
 
-sealed interface ChatSocketEvent {
-    data object Connected : ChatSocketEvent
-    data class Message(val body: String) : ChatSocketEvent
+interface RealtimeSocketClient {
+    suspend fun listen(onSubscribed: () -> Unit, onMessage: (String) -> Unit)
 }
 
 @Singleton
-class ChatSocketClient @Inject constructor(
+class StompRealtimeSocketClient @Inject constructor(
     retrofit: Retrofit,
     authInterceptor: AuthInterceptor,
-) {
+) : RealtimeSocketClient {
     // Spring's /ws SockJS endpoint also exposes raw STOMP at /ws/websocket.
-    private val socketUrl = retrofit.baseUrl()
-        .newBuilder()
-        .encodedPath("/ws/websocket")
-        .query(null)
-        .fragment(null)
-        .build()
-        .toString()
-        .replaceFirst("https://", "wss://")
-        .replaceFirst("http://", "ws://")
+    private val endpoint = checkNotNull(retrofit.baseUrl().resolve("/ws/websocket"))
 
     private val httpClient = OkHttpClient.Builder()
         .addInterceptor(authInterceptor)
@@ -49,14 +38,14 @@ class ChatSocketClient @Inject constructor(
         gracefulDisconnect = false
     }
 
-    fun events(): Flow<ChatSocketEvent> = flow {
-        val session = stompClient.connect(socketUrl)
-        session.use { connectedSession ->
-            val messages = connectedSession.subscribeText("/user/queue/events")
-            emit(ChatSocketEvent.Connected)
+    override suspend fun listen(onSubscribed: () -> Unit, onMessage: (String) -> Unit) {
+        val session = stompClient.connect(endpoint.toString())
+        session.use {
+            val messages = session.subscribeText("/user/queue/events")
+            onSubscribed()
 
             messages.collect { body ->
-                emit(ChatSocketEvent.Message(body))
+                onMessage(body)
             }
         }
     }

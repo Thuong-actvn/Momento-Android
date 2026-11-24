@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="main_tab_moments">Moments</string>
+    <string name="main_tab_moments">Khoảnh khắc</string>
     <string name="main_tab_camera">Máy ảnh</string>
-    <string name="main_tab_journal">Journal</string>
+    <string name="main_tab_journal">Nhật ký</string>
     <string name="main_feed_placeholder">Màn hình Feed</string>
 </resources>

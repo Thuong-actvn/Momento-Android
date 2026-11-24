@@ -6,7 +6,6 @@ import com.example.momento.feature.chat.domain.model.ConversationSummary
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -24,18 +23,21 @@ class ChatMemoryStore @Inject constructor(
         val version: Long,
         val conversations: Map<String, ConversationSummary> = emptyMap(),
         val messages: Map<String, Map<String, ChatMessage>> = emptyMap(),
+        val lastSyncedMessageIds: Map<String, String> = emptyMap(),
     )
 
     private val snapshots = MutableStateFlow(Snapshot(users.sessionVersion.value))
 
     init {
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+        scope.launch {
             users.sessionVersion.collect {
                 // Use the same monitor as withSession/clear: a delayed cleanup cannot erase
                 // messages that have already been published by the new session.
                 synchronized(users) {
                     val version = users.sessionVersion.value
-                    if (snapshots.value.version != version) snapshots.value = Snapshot(version)
+                    if (snapshots.value.version != version) {
+                        snapshots.value = Snapshot(version)
+                    }
                 }
             }
         }
@@ -68,20 +70,28 @@ class ChatMemoryStore @Inject constructor(
         }
     }
 
-    /** Take this snapshot before REST starts so new socket messages cannot hide a gap. */
-    fun latestMessageIds(session: CurrentUserStore.Session): Map<String, String?> {
+    fun cachedPeerIds(session: CurrentUserStore.Session): List<String> {
         return users.withSession(session) {
             val snapshot = snapshots.value
             if (snapshot.version != session.generation) {
-                return@withSession emptyMap()
+                return@withSession emptyList()
             }
+            snapshot.messages.keys.toList()
+        }
+    }
 
-            snapshot.messages.mapValues { (_, messages) ->
-                val orderedMessages = messages.values.sortedWith(messageOrder)
-                val latestDatedMessage = orderedMessages.lastOrNull { it.createdAt != null }
-                val firstPendingMessage = orderedMessages.firstOrNull()
-                latestDatedMessage?.id ?: firstPendingMessage?.id
-            }
+    /** The first non-empty REST page sets this ID. A socket message never advances it. */
+    fun lastSyncedMessageId(session: CurrentUserStore.Session, peerId: String): String {
+        return users.withSession(session) {
+            snapshots.value.lastSyncedMessageIds.getValue(peerId)
+        }
+    }
+
+    fun markHistorySynced(session: CurrentUserStore.Session, peerId: String, messageId: String) {
+        mutate(session) { snapshot ->
+            val checkpoints = snapshot.lastSyncedMessageIds.toMutableMap()
+            checkpoints[peerId] = messageId
+            snapshot.copy(lastSyncedMessageIds = checkpoints)
         }
     }
 
@@ -99,13 +109,18 @@ class ChatMemoryStore @Inject constructor(
             require(previous == null || previous.conversationId == summary.conversationId) {
                 "The backend returned multiple conversations for the same peer"
             }
-            // A list request may have started before a send/event committed. Preserve its preview.
+            if (previous == null) {
+                merged[summary.otherUserId] = summary
+                continue
+            }
+
+            // A socket message may already have updated the preview while REST was loading.
             val awaitingTimestamp = snapshot.messages[summary.otherUserId].orEmpty().values
                 .any { it.createdAt == null }
-            merged[summary.otherUserId] = if (previous != null &&
-                (awaitingTimestamp || (previous.lastMessageAt != null &&
-                    (summary.lastMessageAt == null || !summary.lastMessageAt.isAfter(previous.lastMessageAt))))
-            ) {
+            val cachedTime = previous.lastMessageAt
+            val serverTime = summary.lastMessageAt
+            val keepCachedPreview = cachedTime != null && (serverTime == null || serverTime <= cachedTime)
+            merged[summary.otherUserId] = if (awaitingTimestamp || keepCachedPreview) {
                 summary.copy(
                     lastMessageContent = previous.lastMessageContent,
                     lastMessageAt = previous.lastMessageAt,
@@ -122,9 +137,12 @@ class ChatMemoryStore @Inject constructor(
         session: CurrentUserStore.Session,
         otherUserId: String,
         incoming: List<ChatMessage>,
+        firstHistoryPage: Boolean = false,
     ) = mutate(session) { snapshot ->
         require(otherUserId != session.userId) { "Cannot chat with yourself" }
-        if (incoming.isEmpty()) return@mutate snapshot
+        if (incoming.isEmpty()) {
+            return@mutate snapshot
+        }
         val conversationId = incoming.first().conversationId
         val previous = snapshot.conversations[otherUserId]
         require(previous == null || previous.conversationId == conversationId) {
@@ -133,12 +151,12 @@ class ChatMemoryStore @Inject constructor(
         require(snapshot.conversations.values.none {
             it.conversationId == conversationId && it.otherUserId != otherUserId
         }) { "Messages belong to a different peer" }
-        require(incoming.all {
-            it.conversationId == conversationId && it.senderId in setOf(session.userId, otherUserId)
-        }) { "Messages must belong to the requested conversation and participants" }
-
         val messages = snapshot.messages[otherUserId].orEmpty().toMutableMap()
-        incoming.forEach { message ->
+        for (message in incoming) {
+            val knownSender = message.senderId == session.userId || message.senderId == otherUserId
+            require(message.conversationId == conversationId && knownSender) {
+                "Messages must belong to the requested conversation and participants"
+            }
             // A delayed send/event response must not erase a timestamp already loaded from REST.
             messages[message.id] = if (message.createdAt == null) {
                 message.copy(createdAt = messages[message.id]?.createdAt)
@@ -146,12 +164,15 @@ class ChatMemoryStore @Inject constructor(
                 message
             }
         }
-        val latest = messages.values.sortedWith(messageOrder).last()
+        val orderedMessages = messages.values.sortedWith(messageOrder)
+        val latest = orderedMessages.last()
         val summary = previous ?: ConversationSummary(
-            conversationId, otherUserId,
-            otherUserDisplayName = messages.values
-                .filter { it.senderId == otherUserId }.sortedWith(messageOrder).lastOrNull()?.senderDisplayName,
-            otherUserAvatarUrl = null, lastMessageContent = null, lastMessageAt = null,
+            conversationId = conversationId,
+            otherUserId = otherUserId,
+            otherUserDisplayName = orderedMessages.lastOrNull { it.senderId == otherUserId }?.senderDisplayName,
+            otherUserAvatarUrl = null,
+            lastMessageContent = null,
+            lastMessageAt = null,
         )
         val updated = if (latest.createdAt == null || summary.lastMessageAt == null ||
             !latest.createdAt.isBefore(summary.lastMessageAt)
@@ -160,9 +181,14 @@ class ChatMemoryStore @Inject constructor(
         } else {
             summary
         }
+        var checkpoints = snapshot.lastSyncedMessageIds
+        if (firstHistoryPage && otherUserId !in checkpoints) {
+            checkpoints = checkpoints + (otherUserId to incoming.first().id)
+        }
         snapshot.copy(
             conversations = snapshot.conversations + (otherUserId to updated),
             messages = snapshot.messages + (otherUserId to messages.toMap()),
+            lastSyncedMessageIds = checkpoints,
         )
     }
 

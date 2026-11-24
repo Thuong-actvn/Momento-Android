@@ -24,7 +24,7 @@
     <string name="journal_friends_error">Chưa tải được tên và ảnh đại diện của bạn bè.</string>
     <string name="journal_pagination_error">Chưa tải được trang kế tiếp. Vui lòng thử lại.</string>
     <string name="journal_detail_title">Kỷ niệm</string>
-    <string name="journal_close_detail">Trở về Journal</string>
+    <string name="journal_close_detail">Trở về Nhật ký</string>
     <string name="journal_audience_all">Chia sẻ với tất cả bạn bè</string>
     <string name="journal_audience_custom">Chia sẻ tùy chọn</string>
     <string name="journal_reactions_title">Reaction</string>

@@ -9,7 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.momento.app.MomentoApp
-import com.example.momento.feature.chat.data.realtime.ChatRealtimeManager
+import com.example.momento.core.realtime.RealtimeManager
 import com.example.momento.ui.theme.MomentoTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
     private var widgetPhotoId by mutableStateOf<String?>(null)
 
     @Inject
-    lateinit var chatRealtime: ChatRealtimeManager
+    lateinit var realtime: RealtimeManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,11 +53,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        chatRealtime.setForeground(true)
+        realtime.setForeground(true)
     }
 
     override fun onStop() {
-        chatRealtime.setForeground(false)
+        realtime.setForeground(false)
         super.onStop()
     }
 

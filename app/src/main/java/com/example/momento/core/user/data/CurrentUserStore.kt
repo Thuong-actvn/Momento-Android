@@ -17,6 +17,9 @@ class CurrentUserStore @Inject constructor() {
     /** Changes even when the same account signs out and immediately signs in again. */
     val sessionVersion = _sessionVersion.asStateFlow()
 
+    private val _completedProfileSession = MutableStateFlow<Session?>(null)
+    val completedProfileSession = _completedProfileSession.asStateFlow()
+
     class Session internal constructor(
         internal val generation: Long,
         internal val userId: String?,
@@ -53,6 +56,11 @@ class CurrentUserStore @Inject constructor() {
             "Backend returned a different user"
         }
         _currentUser.value = user
+        if (!user.isProfileCompleted) {
+            _completedProfileSession.value = null
+        } else if (_completedProfileSession.value?.userId != user.id) {
+            _completedProfileSession.value = Session(generation, user.id)
+        }
     }
 
     @Synchronized
@@ -60,5 +68,6 @@ class CurrentUserStore @Inject constructor() {
         generation++
         _sessionVersion.value = generation
         _currentUser.value = null
+        _completedProfileSession.value = null
     }
 }

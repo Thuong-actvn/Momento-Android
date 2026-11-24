@@ -43,10 +43,19 @@ class ChatRepositoryImpl @Inject constructor(
 
     override fun observeMessages(otherUserId: String) = memory.observeMessages(backendUuid(otherUserId))
 
-    override suspend fun getConversations(): Result<List<ConversationSummary>> = requestResult { session ->
+    override suspend fun getConversations(): Result<List<ConversationSummary>> {
+        return requestResult { session ->
+            loadConversations(session)
+        }
+    }
+
+    internal suspend fun loadConversations(session: CurrentUserStore.Session): List<ConversationSummary> {
+        users.checkSession(session)
         val response = api.getConversations()
-        decodeResponse {
-            response.requireData().map { it.toDomain() }.also { memory.mergeConversations(session, it) }
+        return decodeResponse {
+            val conversations = response.requireData().map { it.toDomain() }
+            memory.mergeConversations(session, conversations)
+            conversations
         }
     }
 
@@ -54,7 +63,18 @@ class ChatRepositoryImpl @Inject constructor(
         otherUserId: String,
         cursor: String?,
         limit: Int,
-    ): Result<ChatMessagePage> = requestResult { session ->
+    ): Result<ChatMessagePage> {
+        return requestResult { session ->
+            loadMessages(session, otherUserId, cursor, limit)
+        }
+    }
+
+    internal suspend fun loadMessages(
+        session: CurrentUserStore.Session,
+        otherUserId: String,
+        cursor: String?,
+        limit: Int,
+    ): ChatMessagePage {
         val peerId = validatePeer(otherUserId, session)
         require(limit in 1..50) { "Message page limit must be between 1 and 50" }
         require(cursor == null || cursor.isNotBlank()) { "Omit cursor on the first page" }
@@ -66,16 +86,16 @@ class ChatRepositoryImpl @Inject constructor(
         } catch (error: Exception) {
             val failure = error.toChatException()
             if (cursor == null && failure.reason == ChatError.CONVERSATION_NOT_FOUND) {
-                return@requestResult ChatMessagePage(emptyList(), null, false)
+                return ChatMessagePage(emptyList(), null, false)
             }
             throw failure
         }
-        try {
+        return try {
             decodeResponse {
-                response.requireData().toDomain().also { page ->
-                    require(!page.hasMore || page.nextCursor != cursor) { "Message cursor did not advance" }
-                    memory.mergeMessages(session, peerId, page.data)
-                }
+                val page = response.requireData().toDomain()
+                require(!page.hasMore || page.nextCursor != cursor) { "Message cursor did not advance" }
+                memory.mergeMessages(session, peerId, page.data, firstHistoryPage = cursor == null)
+                page
             }
         } catch (error: ChatException) {
             if (cursor == null && error.reason == ChatError.CONVERSATION_NOT_FOUND) {

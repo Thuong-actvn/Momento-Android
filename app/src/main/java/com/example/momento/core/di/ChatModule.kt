@@ -9,9 +9,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import retrofit2.Retrofit
 
 @Module
@@ -24,9 +21,5 @@ abstract class ChatModule {
         @Provides
         @Singleton
         fun chatApi(retrofit: Retrofit): ChatApi = retrofit.create(ChatApi::class.java)
-
-        @Provides
-        @Singleton
-        fun applicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     }
 }
