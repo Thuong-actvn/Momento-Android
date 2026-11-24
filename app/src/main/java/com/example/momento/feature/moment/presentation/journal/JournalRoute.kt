@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
@@ -59,6 +60,12 @@ fun JournalRouteContent(
     )
 
     if (detail.item != null) {
+        LifecycleResumeEffect(detail.item?.moment?.id) {
+            detailViewModel.setReactionsVisible(true)
+            onPauseOrDispose {
+                detailViewModel.setReactionsVisible(false)
+            }
+        }
         Dialog(
             onDismissRequest = detailViewModel::close,
             properties = DialogProperties(

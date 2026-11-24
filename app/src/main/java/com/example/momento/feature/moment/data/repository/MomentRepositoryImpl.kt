@@ -139,6 +139,12 @@ class MomentRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getReactions(momentId: String): Result<List<MomentReaction>> = requestResult {
+        validateId(momentId)
+        val response = api.getReactions(momentId)
+        decodeResponse { response.requireData().map { it.toDomain() } }
+    }
+
     override suspend fun viewUnseenReactions(momentId: String): Result<List<MomentReaction>> = requestResult {
         validateId(momentId)
         val response = api.viewUnseenReactions(momentId)

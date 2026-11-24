@@ -57,6 +57,11 @@ interface MomentApi {
         @Body body: RequestBody,
     ): ApiResponse<Unit>
 
+    @GET("photos/{photoId}/reactions")
+    suspend fun getReactions(
+        @Path("photoId") photoId: String,
+    ): ApiResponse<List<ReactionResponseDto>>
+
     @POST("photos/{photoId}/reactions/view")
     suspend fun viewUnseenReactions(
         @Path("photoId") photoId: String,

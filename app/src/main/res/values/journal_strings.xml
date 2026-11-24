@@ -28,11 +28,11 @@
     <string name="journal_audience_all">Chia sẻ với tất cả bạn bè</string>
     <string name="journal_audience_custom">Chia sẻ tùy chọn</string>
     <string name="journal_reactions_title">Reaction</string>
-    <string name="journal_view_new_reactions">Xem reaction mới</string>
+    <string name="journal_view_new_reactions">Làm mới</string>
     <string name="journal_reactions_explanation">Reaction mới sẽ được đánh dấu đã xem khi mở.</string>
-    <string name="journal_reactions_loading">Đang tải reaction mới…</string>
-    <string name="journal_reactions_empty">Chưa có reaction mới.</string>
-    <string name="journal_reactions_error">Không thể tải reaction mới. Vui lòng thử lại.</string>
+    <string name="journal_reactions_loading">Đang tải reaction…</string>
+    <string name="journal_reactions_empty">Chưa có reaction.</string>
+    <string name="journal_reactions_error">Không thể tải reaction. Vui lòng thử lại.</string>
     <string name="journal_delete">Xóa kỷ niệm</string>
     <string name="journal_delete_title">Xóa kỷ niệm này?</string>
     <string name="journal_delete_confirmation">Bạn có chắc muốn xóa kỷ niệm này?</string>

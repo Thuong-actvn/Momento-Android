@@ -18,6 +18,10 @@ class MomentUpdates(
     private val _version = MutableStateFlow(0L)
     val version = _version.asStateFlow()
 
+    // Reaction changes only reload an open reaction list, without refreshing photos or widgets.
+    private val _reactionVersion = MutableStateFlow(0L)
+    val reactionVersion = _reactionVersion.asStateFlow()
+
     init {
         scope.launch {
             version.collectLatest { version ->
@@ -38,6 +42,12 @@ class MomentUpdates(
     fun requestRefresh(session: CurrentUserStore.Session) {
         users.withSession(session) {
             _version.value = _version.value + 1
+        }
+    }
+
+    fun requestReactionRefresh(session: CurrentUserStore.Session) {
+        users.withSession(session) {
+            _reactionVersion.value = _reactionVersion.value + 1
         }
     }
 }

@@ -73,6 +73,7 @@ class RealtimeManager @Inject constructor(
         try {
             notifications.requestRefresh(session)
             moments.requestRefresh(session)
+            moments.requestReactionRefresh(session)
             launch {
                 syncChat(session, syncRequested)
             }
@@ -99,6 +100,7 @@ class RealtimeManager @Inject constructor(
                         syncRequested.value = true
                         notifications.requestRefresh(session)
                         moments.requestRefresh(session)
+                        moments.requestReactionRefresh(session)
                     },
                     onMessage = { body ->
                         if (handleMessage(session, body)) {
@@ -126,6 +128,9 @@ class RealtimeManager @Inject constructor(
             }
             if (event.type == "WIDGET_UPDATE") {
                 moments.requestRefresh(session)
+            }
+            if (event.type == "REACTION") {
+                moments.requestReactionRefresh(session)
             }
         } catch (_: Exception) {
             // A malformed message can be skipped without closing the socket.

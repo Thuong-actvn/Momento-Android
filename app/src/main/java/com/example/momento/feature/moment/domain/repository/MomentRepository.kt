@@ -38,6 +38,9 @@ interface MomentRepository {
     /** Each call creates a new reaction; the backend does not implement a heart toggle. */
     suspend fun reactToMoment(momentId: String, emoji: String): Result<Unit>
 
+    /** Owner-only history, including reactions that have already been seen. Does not mark them as seen. */
+    suspend fun getReactions(momentId: String): Result<List<MomentReaction>>
+
     /** Owner-only operation that also marks the returned reactions as seen. */
     suspend fun viewUnseenReactions(momentId: String): Result<List<MomentReaction>>
 
