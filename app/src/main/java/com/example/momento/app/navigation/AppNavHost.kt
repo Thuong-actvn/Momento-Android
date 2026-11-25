@@ -30,6 +30,7 @@ import com.example.momento.feature.profile.presentation.editprofile.EditProfileR
 import com.example.momento.feature.profile.presentation.profile.ProfileRoute
 import com.example.momento.feature.widget.presentation.WidgetRoute
 import com.example.momento.feature.widget.presentation.WidgetMomentRoute
+import com.example.momento.core.messaging.NotificationPermission
 
 @Composable
 fun AppNavHost(
@@ -42,6 +43,11 @@ fun AppNavHost(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val sessionViewModel: MainViewModel = hiltViewModel()
     val currentUser by sessionViewModel.currentUser.collectAsStateWithLifecycle()
+    val canRequestNotifications = currentUser?.isProfileCompleted == true &&
+        backStackEntry?.destination?.hierarchy?.any { it.hasRoute<MainGraph>() } == true
+    if (canRequestNotifications) {
+        NotificationPermission()
+    }
     val onBack = {
         if (navController.previousBackStackEntry == null || !navController.popBackStack()) onExit()
     }
