@@ -1,8 +1,13 @@
 package com.example.momento.feature.chat.data.remote
 
 import com.example.momento.core.network.ApiException
+import com.example.momento.core.network.AuthTokenUnavailableException
+import com.example.momento.core.network.OfflineSessionException
 import com.example.momento.core.network.toApiException
 import java.io.IOException
+import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.UnknownHostException
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import retrofit2.HttpException
@@ -47,6 +52,13 @@ internal fun <T> decodeChatResponse(block: () -> T): T {
 }
 
 internal fun Exception.toChatException(sending: Boolean = false): ChatException {
+    when (this) {
+        is OfflineSessionException,
+        is AuthTokenUnavailableException,
+        is ConnectException,
+        is NoRouteToHostException,
+        is UnknownHostException -> return ChatException(ChatError.NETWORK, cause = this)
+    }
     val error = when (this) {
         is ChatException -> this
         is HttpException -> toApiException().asChatError()

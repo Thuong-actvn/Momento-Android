@@ -1,6 +1,7 @@
 package com.example.momento.feature.chat.data.repository
 
 import com.example.momento.core.common.suspendRunCatching
+import com.example.momento.core.realtime.RealtimeNetworkMonitor
 import com.example.momento.core.user.data.CurrentUserStore
 import com.example.momento.feature.chat.data.local.ChatRoomStore
 import com.example.momento.feature.chat.data.mapper.backendUuid
@@ -16,6 +17,7 @@ import com.example.momento.feature.chat.domain.model.ChatMessagePage
 import com.example.momento.feature.chat.domain.model.ChatMessageType
 import com.example.momento.feature.chat.domain.model.ConversationSummary
 import com.example.momento.feature.chat.domain.repository.ChatRepository
+import java.net.ConnectException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -43,6 +45,7 @@ class ChatRepositoryImpl @Inject constructor(
     private val users: CurrentUserStore,
     private val store: ChatRoomStore,
     private val history: ChatHistoryLoader,
+    private val network: RealtimeNetworkMonitor,
     private val scope: CoroutineScope,
 ) : ChatRepository {
     override val conversations = store.conversations
@@ -94,6 +97,7 @@ class ChatRepositoryImpl @Inject constructor(
         return requestResult(sending = true) { session ->
             val peerId = validatePeer(otherUserId, session)
             val body = messageBody(content)
+            checkSendConnection()
             val response = api.sendText(peerId, body)
             val message = decodeChatResponse {
                 val sent = response.requireData().toDomain()
@@ -115,7 +119,9 @@ class ChatRepositoryImpl @Inject constructor(
         return requestResult(sending = true) { session ->
             val photo = backendUuid(photoId)
             val owner = validatePeer(ownerId, session)
-            val response = api.replyToMoment(photo, messageBody(content))
+            val body = messageBody(content)
+            checkSendConnection()
+            val response = api.replyToMoment(photo, body)
             val message = decodeChatResponse {
                 val sent = response.requireData().toDomain()
                 require(sent.senderId == session.userId) { "The backend returned a different sender" }
@@ -155,6 +161,12 @@ class ChatRepositoryImpl @Inject constructor(
         val peer = backendUuid(value)
         require(peer != session.userId) { "Cannot chat with yourself" }
         return peer
+    }
+
+    private fun checkSendConnection() {
+        if (!network.hasNetwork()) {
+            throw ConnectException("No active network")
+        }
     }
 
     private fun messageBody(content: String): RequestBody {
