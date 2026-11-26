@@ -4,4 +4,7 @@
     <exclude domain="sharedpref" path="." />
     <exclude domain="file" path="datastore/momento_widget.preferences_pb" />
     <exclude domain="file" path="widget_images/" />
+    <exclude domain="database" path="momento.db" />
+    <exclude domain="database" path="momento.db-wal" />
+    <exclude domain="database" path="momento.db-shm" />
 </full-backup-content>
