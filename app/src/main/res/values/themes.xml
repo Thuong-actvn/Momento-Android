@@ -2,4 +2,14 @@
 <resources>
 
     <style name="Theme.Momento" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Momento.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/momento_cream</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.Momento</item>
+        <item name="android:statusBarColor">@color/momento_cream</item>
+        <item name="android:navigationBarColor">@color/momento_cream</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
 </resources>

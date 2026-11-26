@@ -1,14 +1,12 @@
 package com.example.momento.app
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -20,6 +18,7 @@ import com.example.momento.app.navigation.SessionStartupViewModel
 @Composable
 fun MomentoApp(
     onExit: () -> Unit,
+    onStartupContentReady: () -> Unit,
     widgetPhotoId: String? = null,
     onWidgetPhotoOpened: () -> Unit = {},
 ) {
@@ -30,12 +29,9 @@ fun MomentoApp(
         color = MaterialTheme.colorScheme.background,
     ) {
         when (val session = state) {
-            SessionStartupState.Checking -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
+            SessionStartupState.Checking -> Unit
             is SessionStartupState.Ready -> {
+                SideEffect(onStartupContentReady)
                 // Restore navigation only for the confirmed account and profile state.
                 key(session.user?.id, session.user?.isProfileCompleted) {
                     AppNavHost(

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Use the default system splash on Android 12 and later. -->
+    <style name="Theme.Momento.Starting" parent="Theme.Momento">
+        <item name="postSplashScreenTheme">@style/Theme.Momento</item>
+    </style>
+</resources>

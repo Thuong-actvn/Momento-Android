@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.momento.app.MomentoApp
 import com.example.momento.core.realtime.RealtimeManager
 import com.example.momento.ui.theme.MomentoTheme
@@ -22,17 +23,24 @@ class MainActivity : ComponentActivity() {
     lateinit var realtime: RealtimeManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        var startupContentReady = false
+        splashScreen.setKeepOnScreenCondition { !startupContentReady }
+
         widgetPhotoId = if (savedInstanceState == null) {
             intent.getStringExtra(EXTRA_WIDGET_PHOTO_ID)
         } else {
             savedInstanceState.getString(EXTRA_WIDGET_PHOTO_ID)
         }
         enableEdgeToEdge()
+
         setContent {
             MomentoTheme(dynamicColor = false) {
                 MomentoApp(
                     onExit = ::finish,
+                    onStartupContentReady = { startupContentReady = true },
                     widgetPhotoId = widgetPhotoId,
                     onWidgetPhotoOpened = { widgetPhotoId = null },
                 )
