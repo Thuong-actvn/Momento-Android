@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
     alias(libs.plugins.google.services)
 }
 
@@ -39,6 +40,10 @@ android {
     }
 }
 
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -64,6 +69,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.hilt.work)
     implementation(libs.androidx.credentials)
@@ -77,6 +83,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     ksp(libs.hilt.compiler)
+    ksp(libs.androidx.room.compiler)
     // AndroidX processor for @HiltWorker, separate from the Dagger/Hilt compiler above.
     ksp(libs.androidx.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
