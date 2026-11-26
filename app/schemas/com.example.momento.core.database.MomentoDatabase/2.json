@@ -1,0 +1,264 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "3293da8b61a3336c40017f77194e4e3f",
+    "entities": [
+      {
+        "tableName": "conversations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `conversationId` TEXT NOT NULL, `peerId` TEXT NOT NULL, `peerDisplayName` TEXT, `peerAvatarUrl` TEXT, `lastMessageContent` TEXT, `lastMessageEpochSecond` INTEGER, `lastMessageNano` INTEGER NOT NULL, PRIMARY KEY(`accountId`, `conversationId`))",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conversationId",
+            "columnName": "conversationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerId",
+            "columnName": "peerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerDisplayName",
+            "columnName": "peerDisplayName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "peerAvatarUrl",
+            "columnName": "peerAvatarUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastMessageContent",
+            "columnName": "lastMessageContent",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastMessageEpochSecond",
+            "columnName": "lastMessageEpochSecond",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastMessageNano",
+            "columnName": "lastMessageNano",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId",
+            "conversationId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_conversations_accountId_peerId",
+            "unique": true,
+            "columnNames": [
+              "accountId",
+              "peerId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_conversations_accountId_peerId` ON `${TABLE_NAME}` (`accountId`, `peerId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "messages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `messageId` TEXT NOT NULL, `conversationId` TEXT NOT NULL, `senderId` TEXT NOT NULL, `senderDisplayName` TEXT, `type` TEXT NOT NULL, `content` TEXT NOT NULL, `referencePhotoId` TEXT, `createdAtEpochSecond` INTEGER, `createdAtNano` INTEGER NOT NULL, `arrivalOrder` INTEGER NOT NULL, PRIMARY KEY(`accountId`, `messageId`), FOREIGN KEY(`accountId`, `conversationId`) REFERENCES `conversations`(`accountId`, `conversationId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "messageId",
+            "columnName": "messageId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conversationId",
+            "columnName": "conversationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senderId",
+            "columnName": "senderId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senderDisplayName",
+            "columnName": "senderDisplayName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "content",
+            "columnName": "content",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "referencePhotoId",
+            "columnName": "referencePhotoId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAtEpochSecond",
+            "columnName": "createdAtEpochSecond",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAtNano",
+            "columnName": "createdAtNano",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "arrivalOrder",
+            "columnName": "arrivalOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId",
+            "messageId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_messages_accountId_conversationId_createdAtEpochSecond_createdAtNano",
+            "unique": false,
+            "columnNames": [
+              "accountId",
+              "conversationId",
+              "createdAtEpochSecond",
+              "createdAtNano"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_messages_accountId_conversationId_createdAtEpochSecond_createdAtNano` ON `${TABLE_NAME}` (`accountId`, `conversationId`, `createdAtEpochSecond`, `createdAtNano`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "conversations",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "accountId",
+              "conversationId"
+            ],
+            "referencedColumns": [
+              "accountId",
+              "conversationId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "chat_sync_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `peerId` TEXT NOT NULL, `lastSyncedMessageId` TEXT, `nextOlderCursor` TEXT, `hasMore` INTEGER NOT NULL, PRIMARY KEY(`accountId`, `peerId`))",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerId",
+            "columnName": "peerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSyncedMessageId",
+            "columnName": "lastSyncedMessageId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nextOlderCursor",
+            "columnName": "nextOlderCursor",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "hasMore",
+            "columnName": "hasMore",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId",
+            "peerId"
+          ]
+        }
+      },
+      {
+        "tableName": "offline_session",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`firebaseUid` TEXT NOT NULL, `backendUserId` TEXT NOT NULL, `displayName` TEXT NOT NULL, `slot` INTEGER NOT NULL, PRIMARY KEY(`slot`))",
+        "fields": [
+          {
+            "fieldPath": "firebaseUid",
+            "columnName": "firebaseUid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "backendUserId",
+            "columnName": "backendUserId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "slot",
+            "columnName": "slot",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "slot"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3293da8b61a3336c40017f77194e4e3f')"
+    ]
+  }
+}

@@ -2,6 +2,7 @@ package com.example.momento.core.di
 
 import android.content.Context
 import androidx.room.Room
+import com.example.momento.core.database.MIGRATION_1_2
 import com.example.momento.core.database.MomentoDatabase
 import com.example.momento.feature.chat.data.local.ChatDao
 import dagger.Module
@@ -18,6 +19,7 @@ object DatabaseModule {
     @Singleton
     fun momentoDatabase(@ApplicationContext context: Context): MomentoDatabase {
         return Room.databaseBuilder(context, MomentoDatabase::class.java, "momento.db")
+            .addMigrations(MIGRATION_1_2)
             .build()
     }
 
