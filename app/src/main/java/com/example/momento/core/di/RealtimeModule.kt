@@ -6,6 +6,8 @@ import com.example.momento.core.realtime.RealtimeNetworkMonitor
 import com.example.momento.core.realtime.RealtimeSocketClient
 import com.example.momento.core.realtime.StompRealtimeSocketClient
 import com.example.momento.core.user.data.CurrentUserStore
+import com.example.momento.feature.chat.data.realtime.ChatRealtime
+import com.example.momento.feature.chat.data.realtime.ChatRealtimeHandler
 import com.example.momento.feature.moment.data.realtime.MomentUpdates
 import dagger.Binds
 import dagger.Module
@@ -25,6 +27,9 @@ abstract class RealtimeModule {
 
     @Binds
     abstract fun network(implementation: AndroidRealtimeNetworkMonitor): RealtimeNetworkMonitor
+
+    @Binds
+    abstract fun chat(implementation: ChatRealtimeHandler): ChatRealtime
 
     companion object {
         @Provides

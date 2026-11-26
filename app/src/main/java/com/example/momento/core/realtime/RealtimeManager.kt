@@ -2,11 +2,12 @@ package com.example.momento.core.realtime
 
 import com.example.momento.core.common.suspendRunCatching
 import com.example.momento.core.user.data.CurrentUserStore
-import com.example.momento.feature.chat.data.realtime.ChatRealtimeHandler
+import com.example.momento.feature.chat.data.realtime.ChatRealtime
 import com.example.momento.feature.moment.data.realtime.MomentUpdates
 import com.example.momento.feature.notification.data.realtime.NotificationUpdates
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -31,7 +32,7 @@ enum class RealtimeConnectionState {
 class RealtimeManager @Inject constructor(
     private val socket: RealtimeSocketClient,
     private val network: RealtimeNetworkMonitor,
-    private val chat: ChatRealtimeHandler,
+    private val chat: ChatRealtime,
     private val notifications: NotificationUpdates,
     private val moments: MomentUpdates,
     private val users: CurrentUserStore,
@@ -79,6 +80,7 @@ class RealtimeManager @Inject constructor(
             }
             listenWithRetry(session, syncRequested, networkRestored)
         } finally {
+            chat.endForeground(session)
             networkWatch.close()
             state.value = RealtimeConnectionState.STOPPED
         }
@@ -117,7 +119,7 @@ class RealtimeManager @Inject constructor(
         }
     }
 
-    private fun handleMessage(session: CurrentUserStore.Session, body: String): Boolean {
+    private suspend fun handleMessage(session: CurrentUserStore.Session, body: String): Boolean {
         try {
             val event = json.decodeFromString<Envelope>(body)
             if (event.type == "CHAT_MESSAGE" && event.payload != null) {
@@ -132,6 +134,8 @@ class RealtimeManager @Inject constructor(
             if (event.type == "REACTION") {
                 moments.requestReactionRefresh(session)
             }
+        } catch (error: CancellationException) {
+            throw error
         } catch (_: Exception) {
             // A malformed message can be skipped without closing the socket.
         }

@@ -3,8 +3,11 @@ package com.example.momento.core.user.data
 import com.example.momento.core.user.domain.model.CurrentUser
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 
 /** In-memory backend user shared by auth, profile and the main screen. */
 @Singleton
@@ -33,8 +36,18 @@ class CurrentUserStore @Inject constructor() {
 
     @Synchronized
     fun requireSession(): Session {
-        val user = checkNotNull(_currentUser.value) { "Sign in first" }
+        return checkNotNull(sessionOrNull()) { "Sign in first" }
+    }
+
+    @Synchronized
+    fun sessionOrNull(): Session? {
+        val user = _currentUser.value ?: return null
         return Session(generation, user.id)
+    }
+
+    fun observeSession(): Flow<Session?> {
+        val sessions = combine(currentUser, sessionVersion) { _, _ -> sessionOrNull() }
+        return sessions.distinctUntilChangedBy { session -> session?.generation }
     }
 
     @Synchronized
@@ -64,10 +77,12 @@ class CurrentUserStore @Inject constructor() {
     }
 
     @Synchronized
-    fun clear() {
+    fun clear(): String? {
+        val accountId = _currentUser.value?.id
         generation++
-        _sessionVersion.value = generation
         _currentUser.value = null
+        _sessionVersion.value = generation
         _completedProfileSession.value = null
+        return accountId
     }
 }

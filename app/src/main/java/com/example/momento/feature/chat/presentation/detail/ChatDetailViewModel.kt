@@ -6,8 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.momento.R
 import com.example.momento.core.user.data.CurrentUserStore
 import com.example.momento.feature.chat.data.remote.ChatException
-import com.example.momento.feature.chat.domain.repository.ChatRepository
+import com.example.momento.feature.chat.domain.model.ChatMessage
 import com.example.momento.feature.chat.domain.model.ChatMessageType
+import com.example.momento.feature.chat.domain.repository.ChatRepository
+import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.repository.MomentRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
@@ -19,7 +21,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -36,7 +37,7 @@ class ChatDetailViewModel @Inject constructor(
 
     private var session: CurrentUserStore.Session? = null
     private var hasStartedSession = false
-    private var nextCursor: String? = null
+    private var nextOlderCursor: String? = null
     private var historyJob: Job? = null
     private var sendJob: Job? = null
     private var messagesObserver: Job? = null
@@ -46,13 +47,9 @@ class ChatDetailViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            combine(currentUserStore.currentUser, currentUserStore.sessionVersion) { _, _ ->
-                getCurrentSession()
+            currentUserStore.observeSession().collect { currentSession ->
+                onSessionChanged(currentSession)
             }
-                .distinctUntilChangedBy { currentSession -> currentSession?.generation }
-                .collect { currentSession ->
-                    onSessionChanged(currentSession)
-                }
         }
     }
 
@@ -135,10 +132,11 @@ class ChatDetailViewModel @Inject constructor(
         if (historyJob?.isActive == true || currentState.ownUserId == null) {
             return
         }
-        if (older && (!currentState.hasLoadedHistory || !currentState.hasMore || nextCursor == null)) {
+        val canLoadOlder = currentState.hasLoadedHistory && currentState.hasMore && nextOlderCursor != null
+        if (older && !canLoadOlder) {
             return
         }
-        val cursor = if (older) nextCursor else null
+        val cursor = if (older) nextOlderCursor else null
         val checkingDelivery = !older && currentState.isDeliveryUncertain
 
         withActiveSession(requestSession) {
@@ -156,34 +154,42 @@ class ChatDetailViewModel @Inject constructor(
                 withActiveSession(requestSession) {
                     val error = result.exceptionOrNull()
                     if (error == null) {
-                        val page = result.getOrThrow()
-                        nextCursor = if (page.hasMore) page.nextCursor else null
-                        // Tin nhắn lấy từ cache Flow; response ở đây chỉ cập nhật phân trang.
-                        _state.update { state ->
-                            state.copy(
-                                isLoadingHistory = false,
-                                isLoadingOlder = false,
-                                hasLoadedHistory = true,
-                                hasMore = page.hasMore,
-                                olderMessagesError = null,
-                                isDeliveryUncertain = if (checkingDelivery) false else state.isDeliveryUncertain,
-                                sendError = if (checkingDelivery) null else state.sendError,
-                            )
-                        }
-                        if (checkingDelivery) {
-                            savedStateHandle[UNCERTAIN_KEY] = false
-                        }
+                        onHistoryLoaded(checkingDelivery)
                         loadMomentReferences(requestSession)
                     } else {
-                        _state.update { state ->
-                            if (older) {
-                                state.copy(isLoadingOlder = false, olderMessagesError = chatHistoryError(error))
-                            } else {
-                                state.copy(isLoadingHistory = false, historyError = chatHistoryError(error))
-                            }
-                        }
+                        onHistoryLoadFailed(older, error)
                     }
                 }
+            }
+        }
+    }
+
+    private fun onHistoryLoaded(checkingDelivery: Boolean) {
+        _state.update { state ->
+            val loaded = state.copy(
+                isLoadingHistory = false,
+                isLoadingOlder = false,
+                hasLoadedHistory = true,
+                olderMessagesError = null,
+            )
+            if (checkingDelivery) {
+                loaded.copy(isDeliveryUncertain = false, sendError = null)
+            } else {
+                loaded
+            }
+        }
+        if (checkingDelivery) {
+            savedStateHandle[UNCERTAIN_KEY] = false
+        }
+    }
+
+    private fun onHistoryLoadFailed(older: Boolean, error: Throwable) {
+        val errorMessage = chatHistoryError(error)
+        _state.update { state ->
+            if (older) {
+                state.copy(isLoadingOlder = false, olderMessagesError = errorMessage)
+            } else {
+                state.copy(isLoadingHistory = false, historyError = errorMessage)
             }
         }
     }
@@ -195,7 +201,7 @@ class ChatDetailViewModel @Inject constructor(
         momentJob?.cancel()
         momentJob = null
         attemptedMomentIds.clear()
-        nextCursor = null
+        nextOlderCursor = null
         session = currentSession
 
         if (currentSession == null) {
@@ -229,21 +235,39 @@ class ChatDetailViewModel @Inject constructor(
             isDeliveryUncertain = uncertain,
             sendError = if (uncertain) R.string.chat_send_uncertain else null,
         )
+        observeCachedHistory(currentSession)
+        loadHistory(older = false)
+    }
+
+    private fun observeCachedHistory(currentSession: CurrentUserStore.Session) {
+        val messages = chatRepository.observeMessages(otherUserId)
+        val olderCursor = chatRepository.observeOlderCursor(otherUserId)
+        val cachedHistory = combine(messages, moments.cachedMoments, olderCursor) { rows, photos, cursor ->
+            CachedHistory(messages = rows, moments = photos, olderCursor = cursor)
+        }
+
         messagesObserver = viewModelScope.launch {
-            combine(chatRepository.observeMessages(otherUserId), moments.cachedMoments) { messages, photos ->
-                messages to photos
-            }.collect { (messages, photos) ->
+            cachedHistory.collect { history ->
                 withActiveSession(currentSession) {
-                    _state.update { it.copy(messages = messages, moments = photos) }
+                    nextOlderCursor = history.olderCursor
+                    _state.update { state ->
+                        state.copy(
+                            messages = history.messages,
+                            moments = history.moments,
+                            hasLoadedHistory = state.hasLoadedHistory || history.messages.isNotEmpty(),
+                            hasMore = history.olderCursor != null,
+                        )
+                    }
                     loadMomentReferences(currentSession)
                 }
             }
         }
-        loadHistory(older = false)
     }
 
     private fun loadMomentReferences(requestSession: CurrentUserStore.Session) {
-        if (momentJob?.isActive == true) return
+        if (momentJob?.isActive == true) {
+            return
+        }
         withActiveSession(requestSession) {
             momentJob = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 while (true) {
@@ -252,17 +276,16 @@ class ChatDetailViewModel @Inject constructor(
                     } catch (_: IllegalStateException) {
                         break
                     }
-                    val photoIds = _state.value.messages
-                        .filter { it.type == ChatMessageType.PHOTO_COMMENT }
-                        .mapNotNull { it.referencePhotoId }
-                        .filterNot { it in attemptedMomentIds }
-                        .toSet()
-                    if (photoIds.isEmpty()) break
+                    val photoIds = pendingMomentIds()
+                    if (photoIds.isEmpty()) {
+                        break
+                    }
 
                     withActiveSession(requestSession) {
                         attemptedMomentIds.addAll(photoIds)
                         _state.update { state ->
-                            state.copy(loadingMomentIds = state.loadingMomentIds + (photoIds - state.moments.keys))
+                            val missingPhotos = photoIds - state.moments.keys
+                            state.copy(loadingMomentIds = state.loadingMomentIds + missingPhotos)
                         }
                     }
                     momentLoader.load(requestSession, photoIds) { photoId ->
@@ -275,20 +298,23 @@ class ChatDetailViewModel @Inject constructor(
         }
     }
 
+    private fun pendingMomentIds(): Set<String> {
+        val pending = mutableSetOf<String>()
+        for (message in _state.value.messages) {
+            val photoId = message.referencePhotoId ?: continue
+            if (message.type == ChatMessageType.PHOTO_COMMENT && photoId !in attemptedMomentIds) {
+                pending.add(photoId)
+            }
+        }
+        return pending
+    }
+
     private fun isValidRecipient(ownUserId: String?): Boolean {
         return try {
             val canonicalId = UUID.fromString(otherUserId).toString()
             canonicalId.equals(otherUserId, ignoreCase = true) && canonicalId != ownUserId
         } catch (_: IllegalArgumentException) {
             false
-        }
-    }
-
-    private fun getCurrentSession(): CurrentUserStore.Session? {
-        return try {
-            currentUserStore.requireSession()
-        } catch (_: IllegalStateException) {
-            null
         }
     }
 
@@ -299,6 +325,12 @@ class ChatDetailViewModel @Inject constructor(
             // Phiên mới sẽ hủy job và xóa state của phiên cũ.
         }
     }
+
+    private data class CachedHistory(
+        val messages: List<ChatMessage>,
+        val moments: Map<String, Moment>,
+        val olderCursor: String?,
+    )
 
     private companion object {
         const val OWNER_KEY = "chat_detail_owner"

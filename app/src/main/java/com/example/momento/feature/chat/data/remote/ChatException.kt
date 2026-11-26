@@ -3,6 +3,7 @@ package com.example.momento.feature.chat.data.remote
 import com.example.momento.core.network.ApiException
 import com.example.momento.core.network.toApiException
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerializationException
 import retrofit2.HttpException
 
@@ -33,47 +34,62 @@ class ChatException(
     cause: Throwable? = null,
 ) : Exception(cause?.message ?: reason.name, cause)
 
-internal fun Exception.toChatException(sending: Boolean = false): ChatException {
-    val error = if (this is ChatException) {
-        this
-    } else {
-        val api = when (this) {
-            is HttpException -> toApiException()
-            is ApiException -> this
-            else -> null
-        }
-        val reason = if (api != null) {
-            when {
-                api.statusCode == 401 || api.code in setOf(
-                    "UNAUTHORIZED", "FIREBASE_TOKEN_INVALID", "FIREBASE_TOKEN_EXPIRED",
-                ) -> ChatError.UNAUTHENTICATED
-                api.code in setOf("CONVERSATION_MESSAGE_BLOCKED", "USER_BLOCKED") -> ChatError.BLOCKED
-                api.code == "RECIPIENT_ACCOUNT_DELETED" -> ChatError.RECIPIENT_DELETED
-                api.code == "USER_NOT_FOUND" -> ChatError.USER_NOT_FOUND
-                api.code == "PHOTO_NOT_FOUND" -> ChatError.PHOTO_NOT_FOUND
-                api.code == "PHOTO_ACCESS_DENIED" -> ChatError.PHOTO_ACCESS_DENIED
-                api.code == "RESOURCE_NOT_FOUND" -> ChatError.CONVERSATION_NOT_FOUND
-                api.code == "VALIDATION_ERROR" -> ChatError.INVALID_INPUT
-                api.statusCode == 403 -> ChatError.FORBIDDEN
-                api.statusCode in 500..599 || api.code == "INTERNAL_ERROR" -> ChatError.SERVER
-                else -> ChatError.REQUEST_FAILED
-            }
-        } else {
-            when (this) {
-                is SerializationException -> ChatError.INVALID_RESPONSE
-                is IOException -> ChatError.NETWORK
-                is IllegalArgumentException -> ChatError.INVALID_INPUT
-                else -> ChatError.UNKNOWN
-            }
-        }
-        ChatException(reason, api?.code, api?.statusCode, cause = api ?: this)
+internal fun <T> decodeChatResponse(block: () -> T): T {
+    try {
+        return block()
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: ApiException) {
+        throw error.toChatException()
+    } catch (error: Exception) {
+        throw ChatException(ChatError.INVALID_RESPONSE, cause = error)
     }
-    if (!sending || (error.statusCode != 408 && error.reason !in setOf(
-            ChatError.NETWORK, ChatError.INVALID_RESPONSE, ChatError.SERVER, ChatError.UNKNOWN,
-        ))
-    ) return error
+}
+
+internal fun Exception.toChatException(sending: Boolean = false): ChatException {
+    val error = when (this) {
+        is ChatException -> this
+        is HttpException -> toApiException().asChatError()
+        is ApiException -> asChatError()
+        is SerializationException -> ChatException(ChatError.INVALID_RESPONSE, cause = this)
+        is IOException -> ChatException(ChatError.NETWORK, cause = this)
+        is IllegalArgumentException -> ChatException(ChatError.INVALID_INPUT, cause = this)
+        else -> ChatException(ChatError.UNKNOWN, cause = this)
+    }
+    if (!sending) {
+        return error
+    }
+
+    val deliveryUncertain = when (error.reason) {
+        ChatError.NETWORK, ChatError.INVALID_RESPONSE, ChatError.SERVER, ChatError.UNKNOWN -> true
+        else -> error.statusCode == 408
+    }
+    if (!deliveryUncertain) {
+        return error
+    }
     return ChatException(
-        error.reason, error.backendCode, error.statusCode,
-        isDeliveryUncertain = true, cause = error,
+        reason = error.reason,
+        backendCode = error.backendCode,
+        statusCode = error.statusCode,
+        isDeliveryUncertain = true,
+        cause = error,
     )
+}
+
+private fun ApiException.asChatError(): ChatException {
+    val reason = when {
+        statusCode == 401 -> ChatError.UNAUTHENTICATED
+        code in setOf("UNAUTHORIZED", "FIREBASE_TOKEN_INVALID", "FIREBASE_TOKEN_EXPIRED") -> ChatError.UNAUTHENTICATED
+        code in setOf("CONVERSATION_MESSAGE_BLOCKED", "USER_BLOCKED") -> ChatError.BLOCKED
+        code == "RECIPIENT_ACCOUNT_DELETED" -> ChatError.RECIPIENT_DELETED
+        code == "USER_NOT_FOUND" -> ChatError.USER_NOT_FOUND
+        code == "PHOTO_NOT_FOUND" -> ChatError.PHOTO_NOT_FOUND
+        code == "PHOTO_ACCESS_DENIED" -> ChatError.PHOTO_ACCESS_DENIED
+        code == "RESOURCE_NOT_FOUND" -> ChatError.CONVERSATION_NOT_FOUND
+        code == "VALIDATION_ERROR" -> ChatError.INVALID_INPUT
+        statusCode == 403 -> ChatError.FORBIDDEN
+        statusCode in 500..599 || code == "INTERNAL_ERROR" -> ChatError.SERVER
+        else -> ChatError.REQUEST_FAILED
+    }
+    return ChatException(reason, code, statusCode, cause = this)
 }

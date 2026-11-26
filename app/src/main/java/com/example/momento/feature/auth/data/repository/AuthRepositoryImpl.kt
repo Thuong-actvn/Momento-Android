@@ -12,6 +12,7 @@ import com.example.momento.feature.auth.data.remote.dto.CompleteProfileRequest
 import com.example.momento.feature.auth.data.remote.dto.LoginRequest
 import com.example.momento.feature.auth.domain.repository.AuthProvider
 import com.example.momento.feature.auth.domain.repository.AuthRepository
+import com.example.momento.feature.chat.data.local.ChatRoomStore
 import com.example.momento.feature.widget.data.local.WidgetLocalStore
 import com.example.momento.feature.widget.presentation.home.WidgetRenderer
 import com.google.firebase.auth.FirebaseAuth
@@ -21,9 +22,11 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Firebase persists the session. The backend user is kept in memory. */
@@ -32,6 +35,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val firebase: Lazy<FirebaseAuth>,
     private val api: AuthApi,
     private val userStore: CurrentUserStore,
+    private val chatStore: ChatRoomStore,
     private val widgetStore: WidgetLocalStore,
     private val workScheduler: BackgroundWorkScheduler,
     private val messaging: Lazy<FirebaseMessaging>,
@@ -87,8 +91,10 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun signOut(): Result<Unit> = suspendRunCatching {
-        userStore.clear()
         try {
+            val cleared = withContext(NonCancellable) {
+                suspendRunCatching { chatStore.clearActiveAccount() }
+            }
             backgroundMutex.withLock {
                 widgetStore.clearSession()
                 widgetRenderer.clear()
@@ -97,6 +103,7 @@ class AuthRepositoryImpl @Inject constructor(
                 deleteFcmToken()
                 if (firebase.get().currentUser != null) api.logout()
             }
+            cleared.getOrThrow()
         } finally {
             firebase.get().signOut()
         }

@@ -1,14 +1,14 @@
 package com.example.momento.feature.chat.data.repository
 
 import com.example.momento.core.common.suspendRunCatching
-import com.example.momento.core.network.ApiException
 import com.example.momento.core.user.data.CurrentUserStore
-import com.example.momento.feature.chat.data.local.ChatMemoryStore
+import com.example.momento.feature.chat.data.local.ChatRoomStore
 import com.example.momento.feature.chat.data.mapper.backendUuid
 import com.example.momento.feature.chat.data.mapper.toDomain
 import com.example.momento.feature.chat.data.remote.ChatApi
 import com.example.momento.feature.chat.data.remote.ChatError
 import com.example.momento.feature.chat.data.remote.ChatException
+import com.example.momento.feature.chat.data.remote.decodeChatResponse
 import com.example.momento.feature.chat.data.remote.dto.SendChatMessageRequest
 import com.example.momento.feature.chat.data.remote.toChatException
 import com.example.momento.feature.chat.domain.model.ChatMessage
@@ -19,12 +19,16 @@ import com.example.momento.feature.chat.domain.repository.ChatRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -37,11 +41,28 @@ import okio.BufferedSink
 class ChatRepositoryImpl @Inject constructor(
     private val api: ChatApi,
     private val users: CurrentUserStore,
-    private val memory: ChatMemoryStore,
+    private val store: ChatRoomStore,
+    private val history: ChatHistoryLoader,
+    private val scope: CoroutineScope,
 ) : ChatRepository {
-    override val conversations = memory.conversations
+    override val conversations = store.conversations
 
-    override fun observeMessages(otherUserId: String) = memory.observeMessages(backendUuid(otherUserId))
+    override fun observeMessages(otherUserId: String): Flow<List<ChatMessage>> = flow {
+        val peerId = backendUuid(otherUserId)
+        val session = history.startObservingPeer(peerId)
+        try {
+            emitAll(store.observeMessages(peerId))
+        } finally {
+            if (session != null) {
+                history.stopObservingPeer(session, peerId)
+            }
+        }
+    }
+
+    override fun observeOlderCursor(otherUserId: String): Flow<String?> {
+        val peerId = backendUuid(otherUserId)
+        return store.observeOlderCursor(peerId)
+    }
 
     override suspend fun getConversations(): Result<List<ConversationSummary>> {
         return requestResult { session ->
@@ -52,11 +73,11 @@ class ChatRepositoryImpl @Inject constructor(
     internal suspend fun loadConversations(session: CurrentUserStore.Session): List<ConversationSummary> {
         users.checkSession(session)
         val response = api.getConversations()
-        return decodeResponse {
-            val conversations = response.requireData().map { it.toDomain() }
-            memory.mergeConversations(session, conversations)
-            conversations
+        val conversations = decodeChatResponse {
+            response.requireData().map { conversation -> conversation.toDomain() }
         }
+        store.mergeConversations(session, conversations)
+        return conversations
     }
 
     override suspend fun getMessages(
@@ -65,76 +86,67 @@ class ChatRepositoryImpl @Inject constructor(
         limit: Int,
     ): Result<ChatMessagePage> {
         return requestResult { session ->
-            loadMessages(session, otherUserId, cursor, limit)
+            history.load(session, otherUserId, cursor, limit)
         }
     }
 
-    internal suspend fun loadMessages(
-        session: CurrentUserStore.Session,
-        otherUserId: String,
-        cursor: String?,
-        limit: Int,
-    ): ChatMessagePage {
-        val peerId = validatePeer(otherUserId, session)
-        require(limit in 1..50) { "Message page limit must be between 1 and 50" }
-        require(cursor == null || cursor.isNotBlank()) { "Omit cursor on the first page" }
-        memory.rememberPeer(session, peerId)
-        val response = try {
-            api.getMessages(peerId, cursor, limit)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            val failure = error.toChatException()
-            if (cursor == null && failure.reason == ChatError.CONVERSATION_NOT_FOUND) {
-                return ChatMessagePage(emptyList(), null, false)
-            }
-            throw failure
-        }
-        return try {
-            decodeResponse {
-                val page = response.requireData().toDomain()
-                require(!page.hasMore || page.nextCursor != cursor) { "Message cursor did not advance" }
-                memory.mergeMessages(session, peerId, page.data, firstHistoryPage = cursor == null)
-                page
-            }
-        } catch (error: ChatException) {
-            if (cursor == null && error.reason == ChatError.CONVERSATION_NOT_FOUND) {
-                ChatMessagePage(emptyList(), null, false)
-            } else {
-                throw error
-            }
-        }
-    }
-
-    override suspend fun sendText(otherUserId: String, content: String): Result<ChatMessage> =
-        requestResult(sending = true) { session ->
+    override suspend fun sendText(otherUserId: String, content: String): Result<ChatMessage> {
+        return requestResult(sending = true) { session ->
             val peerId = validatePeer(otherUserId, session)
             val body = messageBody(content)
             val response = api.sendText(peerId, body)
-            decodeResponse {
-                response.requireData().toDomain().also { message ->
-                    require(message.senderId == session.userId && message.type == ChatMessageType.TEXT) {
-                        "The backend returned a different sender or message type"
-                    }
-                    memory.mergeMessages(session, peerId, listOf(message))
+            val message = decodeChatResponse {
+                val sent = response.requireData().toDomain()
+                require(sent.senderId == session.userId && sent.type == ChatMessageType.TEXT) {
+                    "The backend returned a different sender or message type"
                 }
+                sent
             }
+            saveSentMessage(session, peerId, message)
+            message
         }
+    }
 
     override suspend fun replyToMoment(
         photoId: String,
         ownerId: String,
         content: String,
-    ): Result<ChatMessage> = requestResult(sending = true) { session ->
-        val photo = backendUuid(photoId)
-        val owner = validatePeer(ownerId, session)
-        val response = api.replyToMoment(photo, messageBody(content))
-        decodeResponse {
-            response.requireData().toDomain().also { message ->
-                require(message.senderId == session.userId &&
-                    message.type == ChatMessageType.PHOTO_COMMENT && message.referencePhotoId == photo
-                ) { "The backend returned a different sender, message type or photo" }
-                memory.mergeMessages(session, owner, listOf(message))
+    ): Result<ChatMessage> {
+        return requestResult(sending = true) { session ->
+            val photo = backendUuid(photoId)
+            val owner = validatePeer(ownerId, session)
+            val response = api.replyToMoment(photo, messageBody(content))
+            val message = decodeChatResponse {
+                val sent = response.requireData().toDomain()
+                require(sent.senderId == session.userId) { "The backend returned a different sender" }
+                require(sent.type == ChatMessageType.PHOTO_COMMENT && sent.referencePhotoId == photo) {
+                    "The backend returned a different message type or photo"
+                }
+                sent
+            }
+            saveSentMessage(session, owner, message)
+            message
+        }
+    }
+
+    private suspend fun saveSentMessage(
+        session: CurrentUserStore.Session,
+        peerId: String,
+        message: ChatMessage,
+    ) {
+        history.markPeerActive(session, peerId)
+        val saved = suspendRunCatching {
+            store.mergeMessages(session, peerId, listOf(message))
+        }
+        if (saved.isSuccess) {
+            return
+        }
+
+        // The server confirmed the send. Reload the history to recover the local copy.
+        checkSession(session)
+        scope.launch {
+            suspendRunCatching {
+                history.load(session, peerId)
             }
         }
     }
@@ -148,18 +160,9 @@ class ChatRepositoryImpl @Inject constructor(
     private fun messageBody(content: String): RequestBody {
         val text = content.trim()
         require(text.isNotEmpty() && text.length <= 2000) { "Message content must contain 1..2000 characters" }
-        return Json.encodeToString(SendChatMessageRequest(text))
-            .toRequestBody("application/json; charset=utf-8".toMediaType()).oneShot()
-    }
-
-    private fun <T> decodeResponse(block: () -> T): T = try {
-        block()
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: ApiException) {
-        throw error.toChatException()
-    } catch (error: Exception) {
-        throw ChatException(ChatError.INVALID_RESPONSE, cause = error)
+        val json = Json.encodeToString(SendChatMessageRequest(text))
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        return json.toRequestBody(mediaType).oneShot()
     }
 
     private suspend fun <T> requestResult(
@@ -172,18 +175,7 @@ class ChatRepositoryImpl @Inject constructor(
             throw ChatException(ChatError.UNAUTHENTICATED, cause = error)
         }
         try {
-            coroutineScope {
-                val request = async(start = CoroutineStart.LAZY) { block(session) }
-                val sessionWatcher = launch(start = CoroutineStart.UNDISPATCHED) {
-                    users.sessionVersion.first { it != session.generation }
-                    request.cancel(CancellationException("Chat session has changed"))
-                }
-                try {
-                    request.await().also { checkSession(session) }
-                } finally {
-                    sessionWatcher.cancel()
-                }
-            }
+            runWhileSessionIsActive(session, block)
         } catch (error: CancellationException) {
             // Session invalidation becomes a typed failure; caller cancellation stays cancellation.
             currentCoroutineContext().ensureActive()
@@ -192,6 +184,25 @@ class ChatRepositoryImpl @Inject constructor(
         } catch (error: Exception) {
             checkSession(session)
             throw error.toChatException(sending)
+        }
+    }
+
+    private suspend fun <T> runWhileSessionIsActive(
+        session: CurrentUserStore.Session,
+        block: suspend (CurrentUserStore.Session) -> T,
+    ): T = coroutineScope {
+        // Start watching for sign-out before the network request starts.
+        val request = async(start = CoroutineStart.LAZY) { block(session) }
+        val sessionWatcher = launch(start = CoroutineStart.UNDISPATCHED) {
+            users.sessionVersion.first { version -> version != session.generation }
+            request.cancel(CancellationException("Chat session has changed"))
+        }
+        try {
+            val result = request.await()
+            checkSession(session)
+            result
+        } finally {
+            sessionWatcher.cancel()
         }
     }
 

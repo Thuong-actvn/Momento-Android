@@ -12,7 +12,7 @@ import org.hildan.krossbow.websocket.okhttp.OkHttpWebSocketClient
 import retrofit2.Retrofit
 
 interface RealtimeSocketClient {
-    suspend fun listen(onSubscribed: () -> Unit, onMessage: (String) -> Unit)
+    suspend fun listen(onSubscribed: () -> Unit, onMessage: suspend (String) -> Unit)
 }
 
 @Singleton
@@ -38,7 +38,7 @@ class StompRealtimeSocketClient @Inject constructor(
         gracefulDisconnect = false
     }
 
-    override suspend fun listen(onSubscribed: () -> Unit, onMessage: (String) -> Unit) {
+    override suspend fun listen(onSubscribed: () -> Unit, onMessage: suspend (String) -> Unit) {
         val session = stompClient.connect(endpoint.toString())
         session.use {
             val messages = session.subscribeText("/user/queue/events")

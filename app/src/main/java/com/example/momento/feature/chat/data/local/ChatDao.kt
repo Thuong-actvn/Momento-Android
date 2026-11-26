@@ -32,8 +32,47 @@ interface ChatDao {
     )
     fun observeMessages(accountId: String, peerId: String): Flow<List<ChatMessageEntity>>
 
+    @Query(
+        """
+        SELECT nextOlderCursor FROM chat_sync_state
+        WHERE accountId = :accountId AND peerId = :peerId AND hasMore = 1
+        """,
+    )
+    fun observeOlderCursor(accountId: String, peerId: String): Flow<String?>
+
     @Query("SELECT * FROM chat_sync_state WHERE accountId = :accountId AND peerId = :peerId")
     suspend fun getSyncState(accountId: String, peerId: String): ChatSyncStateEntity?
+
+    @Query("SELECT * FROM conversations WHERE accountId = :accountId AND peerId = :peerId")
+    suspend fun getConversation(accountId: String, peerId: String): ConversationEntity?
+
+    @Query("SELECT peerId FROM conversations WHERE accountId = :accountId AND conversationId = :conversationId")
+    suspend fun getPeerId(accountId: String, conversationId: String): String?
+
+    @Query("SELECT * FROM messages WHERE accountId = :accountId AND messageId IN (:messageIds)")
+    suspend fun getMessagesById(accountId: String, messageIds: List<String>): List<ChatMessageEntity>
+
+    @Query(
+        """
+        SELECT * FROM messages
+        WHERE accountId = :accountId AND conversationId = :conversationId
+        ORDER BY createdAtEpochSecond IS NULL DESC,
+            createdAtEpochSecond DESC,
+            createdAtNano DESC,
+            CASE WHEN createdAtEpochSecond IS NULL THEN arrivalOrder END DESC,
+            messageId DESC
+        LIMIT 1
+        """,
+    )
+    suspend fun getLatestMessage(accountId: String, conversationId: String): ChatMessageEntity?
+
+    @Query(
+        """
+        SELECT COALESCE(MAX(arrivalOrder), 0) FROM messages
+        WHERE accountId = :accountId AND conversationId = :conversationId
+        """,
+    )
+    suspend fun getLatestArrivalOrder(accountId: String, conversationId: String): Long
 
     @Upsert
     suspend fun upsertConversations(conversations: List<ConversationEntity>)
@@ -43,4 +82,10 @@ interface ChatDao {
 
     @Upsert
     suspend fun upsertSyncState(syncState: ChatSyncStateEntity)
+
+    @Query("DELETE FROM conversations WHERE accountId = :accountId")
+    suspend fun deleteConversations(accountId: String)
+
+    @Query("DELETE FROM chat_sync_state WHERE accountId = :accountId")
+    suspend fun deleteSyncState(accountId: String)
 }

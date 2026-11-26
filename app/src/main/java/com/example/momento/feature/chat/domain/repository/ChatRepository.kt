@@ -12,6 +12,9 @@ interface ChatRepository {
     /** Cached messages, oldest first; this does not create or fetch a conversation. */
     fun observeMessages(otherUserId: String): Flow<List<ChatMessage>>
 
+    /** The saved cursor for loading older messages in this conversation. */
+    fun observeOlderCursor(otherUserId: String): Flow<String?>
+
     suspend fun getConversations(): Result<List<ConversationSummary>>
 
     /** Only RESOURCE_NOT_FOUND on the first page means an empty conversation. */
