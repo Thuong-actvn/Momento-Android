@@ -2,6 +2,7 @@ package com.example.momento.feature.auth.data.remote
 
 import com.example.momento.core.network.ApiResponse
 import com.example.momento.core.network.NoAuth
+import com.example.momento.core.network.SessionCheck
 import com.example.momento.core.user.data.remote.dto.ProfileDto
 import com.example.momento.feature.auth.data.remote.dto.CompleteProfileRequest
 import com.example.momento.feature.auth.data.remote.dto.LoginRequest
@@ -23,6 +24,7 @@ interface AuthApi {
     @POST("auth/login/phone")
     suspend fun phone(@Body body: LoginRequest): ApiResponse<LoginResponse>
 
+    @SessionCheck
     @GET("users/me")
     suspend fun me(): ApiResponse<ProfileDto>
 

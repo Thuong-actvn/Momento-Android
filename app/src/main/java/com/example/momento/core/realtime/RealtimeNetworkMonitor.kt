@@ -8,12 +8,16 @@ import javax.inject.Inject
 
 fun interface RealtimeNetworkMonitor {
     fun watch(onRestored: () -> Unit): AutoCloseable
+
+    fun hasNetwork(): Boolean = true
 }
 
 class AndroidRealtimeNetworkMonitor @Inject constructor(
     @ApplicationContext context: Context,
 ) : RealtimeNetworkMonitor {
     private val connectivity = checkNotNull(context.getSystemService(ConnectivityManager::class.java))
+
+    override fun hasNetwork(): Boolean = connectivity.activeNetwork != null
 
     override fun watch(onRestored: () -> Unit): AutoCloseable {
         var current = connectivity.activeNetwork

@@ -2,6 +2,7 @@ package com.example.momento.core.di
 
 import com.example.momento.BuildConfig
 import com.example.momento.core.network.AuthInterceptor
+import com.example.momento.core.user.data.CurrentUserStore
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import dagger.Lazy
@@ -24,10 +25,12 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun authInterceptor(auth: Lazy<FirebaseAuth>): AuthInterceptor = AuthInterceptor {
-        val user = checkNotNull(auth.get().currentUser) { "Sign in first" }
-        checkNotNull(Tasks.await(user.getIdToken(false), 30, TimeUnit.SECONDS).token) {
-            "Firebase ID token is missing"
+    fun authInterceptor(auth: Lazy<FirebaseAuth>, users: CurrentUserStore): AuthInterceptor {
+        return AuthInterceptor(isUsingCachedSession = users::isUsingCachedSession) {
+            val user = checkNotNull(auth.get().currentUser) { "Sign in first" }
+            checkNotNull(Tasks.await(user.getIdToken(false), 30, TimeUnit.SECONDS).token) {
+                "Firebase ID token is missing"
+            }
         }
     }
 
