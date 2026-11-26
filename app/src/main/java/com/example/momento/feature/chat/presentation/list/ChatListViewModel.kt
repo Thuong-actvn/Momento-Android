@@ -16,8 +16,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -46,14 +46,21 @@ class ChatListViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            // Theo dõi cả phiên để nhận biết việc đăng nhập lại cùng một tài khoản.
-            combine(currentUserStore.currentUser, currentUserStore.sessionVersion) { _, _ ->
-                getCurrentSession()
-            }
-                .distinctUntilChangedBy { currentSession -> currentSession?.generation }
-                .collect { currentSession ->
-                    onSessionChanged(currentSession)
+            currentUserStore.observeSession().collectLatest { currentSession ->
+                onSessionChanged(currentSession)
+                if (currentSession != null) {
+                    currentUserStore.completedProfileSession.first { verified ->
+                        verified?.generation == currentSession.generation
+                    }
+                    friendsJob?.join()
+                    conversationsJob?.join()
+                    updateIfSessionActive(currentSession) {
+                        _state.update { state -> state.copy(isUsingCachedSession = false) }
+                    }
+                    retryFriends()
+                    retryConversations()
                 }
+            }
         }
     }
 
@@ -148,14 +155,6 @@ class ChatListViewModel @Inject constructor(
         }
     }
 
-    private fun getCurrentSession(): CurrentUserStore.Session? {
-        return try {
-            currentUserStore.requireSession()
-        } catch (_: IllegalStateException) {
-            null
-        }
-    }
-
     private fun onSessionChanged(currentSession: CurrentUserStore.Session?) {
         friendsJob?.cancel()
         conversationsJob?.cancel()
@@ -188,15 +187,15 @@ class ChatListViewModel @Inject constructor(
         hasStartedSession = true
         savedStateHandle[OWNER_KEY] = currentSession.userId
         savedStateHandle[QUERY_KEY] = query
+        val fromCache = currentUserStore.isUsingCachedSession()
         _state.value = ChatListUiState(
             query = query,
-            isLoadingFriends = true,
+            isLoadingFriends = !fromCache,
             isLoadingConversations = true,
+            isUsingCachedSession = fromCache,
         )
 
         observeConversations(currentSession)
-        retryFriends()
-        retryConversations()
     }
 
     private fun observeConversations(currentSession: CurrentUserStore.Session) {
@@ -206,7 +205,15 @@ class ChatListViewModel @Inject constructor(
                     conversationSummaries = conversations
                     val items = buildItems(currentSession)
                     _state.update { currentState ->
-                        currentState.copy(items = items)
+                        if (currentUserStore.isUsingCachedSession()) {
+                            currentState.copy(
+                                items = items,
+                                isLoadingConversations = false,
+                                hasLoadedConversations = true,
+                            )
+                        } else {
+                            currentState.copy(items = items)
+                        }
                     }
                 }
             }

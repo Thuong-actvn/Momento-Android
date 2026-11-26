@@ -44,7 +44,7 @@ fun ChatListContent(
     val visibleItems = state.visibleItems
     val hasItems = state.items.isNotEmpty()
     val hasVisibleItems = visibleItems.isNotEmpty()
-    val hasCompleteList = state.hasLoadedFriends && state.hasLoadedConversations &&
+    val hasCompleteList = (state.hasLoadedFriends || state.isUsingCachedSession) && state.hasLoadedConversations &&
         state.friendsError == null && state.conversationsError == null
 
     val showInitialLoading = state.isLoading && !hasItems && !state.isRefreshing
@@ -135,7 +135,7 @@ fun ChatListContent(
                 }
                 showEmptyList -> {
                     item(key = "empty", contentType = "feedback") {
-                        ChatListEmpty(searching = false)
+                    ChatListEmpty(searching = false, fromCache = state.isUsingCachedSession)
                     }
                 }
             }

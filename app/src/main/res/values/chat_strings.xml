@@ -11,6 +11,7 @@
     <string name="chat_loading">Đang tải tin nhắn…</string>
     <string name="chat_empty_title">Chưa có cuộc trò chuyện</string>
     <string name="chat_empty_description">Bạn bè của bạn sẽ xuất hiện ở đây để bắt đầu trò chuyện.</string>
+    <string name="chat_cached_empty_description">Chưa có cuộc trò chuyện nào được lưu trên thiết bị.</string>
     <string name="chat_search_empty_title">Không tìm thấy cuộc trò chuyện</string>
     <string name="chat_search_empty_description">Thử tìm bằng tên hoặc tên người dùng khác.</string>
     <string name="chat_retry">Thử lại</string>

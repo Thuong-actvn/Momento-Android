@@ -20,7 +20,9 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -47,8 +49,15 @@ class ChatDetailViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            currentUserStore.observeSession().collect { currentSession ->
+            currentUserStore.observeSession().collectLatest { currentSession ->
                 onSessionChanged(currentSession)
+                if (currentSession != null) {
+                    currentUserStore.completedProfileSession.first { verified ->
+                        verified?.generation == currentSession.generation
+                    }
+                    historyJob?.join()
+                    loadHistory(older = false)
+                }
             }
         }
     }
@@ -233,15 +242,16 @@ class ChatDetailViewModel @Inject constructor(
             return
         }
 
+        val fromCache = currentUserStore.isUsingCachedSession()
         _state.value = ChatDetailUiState(
             ownUserId = currentSession.userId,
             draft = draft,
-            isLoadingHistory = true,
+            isLoadingHistory = !fromCache,
+            hasLoadedHistory = fromCache,
             isDeliveryUncertain = uncertain,
             sendError = if (uncertain) R.string.chat_send_uncertain else null,
         )
         observeCachedHistory(currentSession)
-        loadHistory(older = false)
     }
 
     private fun observeCachedHistory(currentSession: CurrentUserStore.Session) {
@@ -271,7 +281,7 @@ class ChatDetailViewModel @Inject constructor(
     }
 
     private fun loadMomentReferences(requestSession: CurrentUserStore.Session) {
-        if (momentJob?.isActive == true) {
+        if (currentUserStore.isUsingCachedSession() || momentJob?.isActive == true) {
             return
         }
         withActiveSession(requestSession) {

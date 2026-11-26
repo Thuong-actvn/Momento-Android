@@ -32,6 +32,7 @@ data class ChatListUiState(
     val isRefreshing: Boolean = false,
     val hasLoadedFriends: Boolean = false,
     val hasLoadedConversations: Boolean = false,
+    val isUsingCachedSession: Boolean = false,
     @param:StringRes val friendsError: Int? = null,
     @param:StringRes val conversationsError: Int? = null,
 ) {

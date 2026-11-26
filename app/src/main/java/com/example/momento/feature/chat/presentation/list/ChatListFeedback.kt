@@ -53,7 +53,7 @@ fun ChatListLoading() {
 }
 
 @Composable
-fun ChatListEmpty(searching: Boolean) {
+fun ChatListEmpty(searching: Boolean, fromCache: Boolean = false) {
     val testTag: String
     val icon: ImageVector
     val title: Int
@@ -68,7 +68,7 @@ fun ChatListEmpty(searching: Boolean) {
         testTag = "chat_empty"
         icon = Icons.Outlined.ChatBubbleOutline
         title = R.string.chat_empty_title
-        description = R.string.chat_empty_description
+        description = if (fromCache) R.string.chat_cached_empty_description else R.string.chat_empty_description
     }
 
     MomentoEmptyState(
