@@ -16,11 +16,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class LoginUiState(
-    val isBusy: Boolean = true,
+    val isBusy: Boolean = false,
     val otpRequested: Boolean = false,
     val codeSent: Boolean = false,
     val user: CurrentUser? = null,
-    val message: String = "Đang kiểm tra phiên đăng nhập...",
+    val message: String = "",
     val isError: Boolean = false,
     val phoneNumber: String = "",
     val otp: String = "",
@@ -52,25 +52,6 @@ class LoginViewModel @Inject constructor(
     )
     val state = _state.asStateFlow()
     private var autoVerifying = false
-
-    init {
-        viewModelScope.launch {
-            repository.restoreSession().fold(
-                onSuccess = { user ->
-                    _state.update {
-                        it.copy(
-                            isBusy = false,
-                            user = user,
-                            message = if (user == null) "Chọn Google hoặc nhập số điện thoại để đăng nhập."
-                                else "Đã khôi phục tài khoản từ backend.",
-                            isError = false,
-                        )
-                    }
-                },
-                onFailure = { showError(it) },
-            )
-        }
-    }
 
     fun onPhoneNumberChange(input: String) {
         if (!_state.value.canEditPhoneNumber) return

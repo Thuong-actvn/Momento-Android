@@ -20,6 +20,7 @@ import com.example.momento.app.main.MainRoute
 import com.example.momento.app.main.MainViewModel
 import com.example.momento.feature.auth.navigation.AuthGraph
 import com.example.momento.feature.auth.navigation.CompleteProfile
+import com.example.momento.feature.auth.navigation.Login
 import com.example.momento.feature.auth.navigation.authGraph
 import com.example.momento.feature.chat.presentation.list.ChatListRoute
 import com.example.momento.feature.chat.presentation.list.ChatListViewModel
@@ -39,6 +40,10 @@ fun AppNavHost(
     modifier: Modifier = Modifier,
     widgetPhotoId: String? = null,
     onWidgetPhotoOpened: () -> Unit = {},
+    startInMain: Boolean,
+    needsProfile: Boolean,
+    restoreFailed: Boolean,
+    onRetryRestore: () -> Unit,
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val sessionViewModel: MainViewModel = hiltViewModel()
@@ -53,10 +58,13 @@ fun AppNavHost(
     }
     NavHost(
         navController = navController,
-        startDestination = AuthGraph,
+        startDestination = if (startInMain) MainGraph else AuthGraph,
         modifier = modifier,
     ) {
         authGraph(
+            needsProfile = needsProfile,
+            restoreFailed = restoreFailed,
+            onRetryRestore = onRetryRestore,
             onProfileRequired = {
                 navController.navigate(CompleteProfile) {
                     // Keep AuthGraph, but remove Login from its stack.
@@ -111,7 +119,7 @@ fun AppNavHost(
                         }
                     },
                     onSignedOut = {
-                        navController.navigate(AuthGraph) {
+                        navController.navigate(Login) {
                             popUpTo(MainGraph) { inclusive = true }
                             launchSingleTop = true
                         }
@@ -186,7 +194,7 @@ fun AppNavHost(
         }
         // A restored navigation stack can exist before the in-memory user is restored.
         if (currentUser?.isProfileCompleted != true) {
-            navController.navigate(AuthGraph) {
+            navController.navigate(Login) {
                 popUpTo<MainGraph> { inclusive = true }
                 launchSingleTop = true
             }

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="chat_title">Tin nhắn</string>
+    <string name="session_restore_failed">Không thể khôi phục phiên đăng nhập. Hãy thử lại hoặc đăng nhập lại.</string>
     <string name="chat_back">Quay lại</string>
     <string name="chat_search_placeholder">Tìm kiếm cuộc trò chuyện…</string>
     <string name="chat_search_clear">Xóa tìm kiếm</string>

@@ -7,15 +7,20 @@ import com.example.momento.feature.auth.presentation.completeprofile.CompletePro
 import com.example.momento.feature.auth.presentation.login.LoginScreen
 
 fun NavGraphBuilder.authGraph(
+    needsProfile: Boolean,
+    restoreFailed: Boolean,
+    onRetryRestore: () -> Unit,
     onProfileRequired: () -> Unit,
     onAuthSuccess: () -> Unit,
     onBack: () -> Unit,
 ) {
-    navigation<AuthGraph>(startDestination = Login) {
+    navigation<AuthGraph>(startDestination = if (needsProfile) CompleteProfile else Login) {
         composable<Login> {
             LoginScreen(
                 onProfileRequired = onProfileRequired,
                 onAuthSuccess = onAuthSuccess,
+                restoreFailed = restoreFailed,
+                onRetryRestore = onRetryRestore,
             )
         }
         composable<CompleteProfile> {

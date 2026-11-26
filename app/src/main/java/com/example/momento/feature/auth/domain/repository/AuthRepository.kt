@@ -10,7 +10,8 @@ interface AuthRepository {
 
     /** Called by the Google/Phone adapter after Firebase sign-in succeeds. */
     suspend fun syncUser(provider: AuthProvider): Result<CurrentUser>
-    suspend fun restoreSession(): Result<CurrentUser?>
+    suspend fun restoreSession(): Result<RestoredSession>
+    suspend fun revalidateSession(firebaseUid: String): Result<RestoredSession>
     suspend fun checkUsernameAvailability(username: String): Result<Boolean>
     suspend fun completeProfile(displayName: String, username: String): Result<CurrentUser>
     suspend fun signOut(): Result<Unit>

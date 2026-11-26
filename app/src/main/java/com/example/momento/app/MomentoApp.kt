@@ -1,12 +1,21 @@
 package com.example.momento.app
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.example.momento.app.navigation.AppNavHost
+import com.example.momento.app.navigation.SessionStartupState
+import com.example.momento.app.navigation.SessionStartupViewModel
 
 @Composable
 fun MomentoApp(
@@ -14,17 +23,34 @@ fun MomentoApp(
     widgetPhotoId: String? = null,
     onWidgetPhotoOpened: () -> Unit = {},
 ) {
-    val navController = rememberNavController()
+    val startup: SessionStartupViewModel = hiltViewModel()
+    val state by startup.state.collectAsStateWithLifecycle()
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
-        AppNavHost(
-            navController = navController,
-            onExit = onExit,
-            widgetPhotoId = widgetPhotoId,
-            onWidgetPhotoOpened = onWidgetPhotoOpened,
-            modifier = Modifier.fillMaxSize(),
-        )
+        when (val session = state) {
+            SessionStartupState.Checking -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            is SessionStartupState.Ready -> {
+                // Restore navigation only for the confirmed account and profile state.
+                key(session.user?.id, session.user?.isProfileCompleted) {
+                    AppNavHost(
+                        navController = rememberNavController(),
+                        onExit = onExit,
+                        widgetPhotoId = widgetPhotoId,
+                        onWidgetPhotoOpened = onWidgetPhotoOpened,
+                        startInMain = session.user?.isProfileCompleted == true,
+                        needsProfile = session.user?.isProfileCompleted == false,
+                        restoreFailed = session.restoreFailed,
+                        onRetryRestore = startup::restore,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+        }
     }
 }

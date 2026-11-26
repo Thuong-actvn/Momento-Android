@@ -112,16 +112,6 @@ class ChatRoomStore @Inject constructor(
         }
     }
 
-    suspend fun clearActiveAccount() {
-        writeLock.withLock {
-            val accountId = users.clear() ?: return
-            database.withTransaction {
-                dao.deleteConversations(accountId)
-                dao.deleteSyncState(accountId)
-            }
-        }
-    }
-
     private suspend fun getOrCreateConversation(
         accountId: String,
         peerId: String,

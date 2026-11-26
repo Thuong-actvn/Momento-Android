@@ -76,9 +76,9 @@ fun ProfileIdentityCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (user != null) {
+            if (!username.isNullOrBlank()) {
                 Text(
-                    text = stringResource(R.string.profile_username, user.username),
+                    text = stringResource(R.string.profile_username, username),
                     color = colors.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,

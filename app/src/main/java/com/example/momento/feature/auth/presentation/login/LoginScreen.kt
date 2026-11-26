@@ -68,12 +68,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.momento.R
 import com.example.momento.ui.components.MomentoButton
+import com.example.momento.ui.components.MomentoRetryMessage
 import com.example.momento.ui.theme.MomentoTheme
 
 @Composable
 fun LoginScreen(
     onProfileRequired: () -> Unit,
     onAuthSuccess: () -> Unit,
+    restoreFailed: Boolean = false,
+    onRetryRestore: () -> Unit = {},
     viewModel: LoginViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -89,6 +92,7 @@ fun LoginScreen(
 
     LoginContent(
         state = state,
+        onRetryRestore = if (restoreFailed && state.canSignIn) onRetryRestore else null,
         canUseActivity = activity != null,
         onPhoneNumberChange = viewModel::onPhoneNumberChange,
         onOtpChange = viewModel::onOtpChange,
@@ -123,9 +127,10 @@ private fun LoginContent(
     onResendCode: () -> Unit,
     onGoogleSignIn: () -> Unit,
     modifier: Modifier = Modifier,
+    onRetryRestore: (() -> Unit)? = null,
 ) {
     val isKeyboardOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    val canScroll = state.isOtpStep || state.errorMessage.isNotBlank() || isKeyboardOpen
+    val canScroll = state.isOtpStep || state.errorMessage.isNotBlank() || isKeyboardOpen || onRetryRestore != null
     val scrollState = rememberScrollState()
 
     Column(
@@ -165,6 +170,12 @@ private fun LoginContent(
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 12.dp)
                     .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        } else if (onRetryRestore != null) {
+            MomentoRetryMessage(
+                message = stringResource(R.string.session_restore_failed),
+                actionText = stringResource(R.string.chat_retry),
+                onRetry = onRetryRestore,
             )
         }
 
