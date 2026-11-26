@@ -79,7 +79,7 @@ private fun friendErrorMessage(error: Throwable): Int {
     return when (reason) {
         FriendError.UNAUTHENTICATED,
         FriendError.SESSION_CHANGED -> R.string.chat_session_error
-        FriendError.NETWORK -> R.string.chat_friends_network_error
+        FriendError.NETWORK -> R.string.chat_list_network_error
         else -> R.string.chat_friends_error
     }
 }
@@ -89,7 +89,7 @@ private fun conversationErrorMessage(error: Throwable): Int {
     return when (reason) {
         ChatError.UNAUTHENTICATED,
         ChatError.SESSION_CHANGED -> R.string.chat_session_error
-        ChatError.NETWORK -> R.string.chat_conversations_network_error
+        ChatError.NETWORK -> R.string.chat_list_network_error
         ChatError.INVALID_RESPONSE -> R.string.chat_invalid_response
         else -> R.string.chat_conversations_error
     }

@@ -72,7 +72,7 @@ class ChatDetailViewModel @Inject constructor(
         momentJob = null
         attemptedMomentIds.clear()
         _state.update { it.copy(loadingMomentIds = emptySet()) }
-        loadHistory(older = false)
+        loadHistory(older = false, showRefreshIndicator = true)
     }
 
     fun loadOlder() {
@@ -126,7 +126,7 @@ class ChatDetailViewModel @Inject constructor(
         }
     }
 
-    private fun loadHistory(older: Boolean) {
+    private fun loadHistory(older: Boolean, showRefreshIndicator: Boolean = false) {
         val requestSession = session ?: return
         val currentState = _state.value
         if (historyJob?.isActive == true || currentState.ownUserId == null) {
@@ -141,11 +141,13 @@ class ChatDetailViewModel @Inject constructor(
 
         withActiveSession(requestSession) {
             _state.update { state ->
-                if (older) {
-                    state.copy(isLoadingOlder = true, olderMessagesError = null)
-                } else {
-                    state.copy(isLoadingHistory = true, historyError = null)
-                }
+                state.copy(
+                    isLoadingHistory = !older,
+                    isLoadingOlder = older,
+                    isRefreshing = showRefreshIndicator,
+                    historyError = null,
+                    olderMessagesError = null,
+                )
             }
             historyJob = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 val result = chatRepository.getMessages(otherUserId, cursor, CHAT_MESSAGE_PAGE_SIZE)
@@ -169,6 +171,7 @@ class ChatDetailViewModel @Inject constructor(
             val loaded = state.copy(
                 isLoadingHistory = false,
                 isLoadingOlder = false,
+                isRefreshing = false,
                 hasLoadedHistory = true,
                 olderMessagesError = null,
             )
@@ -186,11 +189,13 @@ class ChatDetailViewModel @Inject constructor(
     private fun onHistoryLoadFailed(older: Boolean, error: Throwable) {
         val errorMessage = chatHistoryError(error)
         _state.update { state ->
-            if (older) {
-                state.copy(isLoadingOlder = false, olderMessagesError = errorMessage)
-            } else {
-                state.copy(isLoadingHistory = false, historyError = errorMessage)
-            }
+            state.copy(
+                isLoadingHistory = false,
+                isLoadingOlder = false,
+                isRefreshing = false,
+                historyError = if (older) null else errorMessage,
+                olderMessagesError = if (older) errorMessage else null,
+            )
         }
     }
 
@@ -254,6 +259,7 @@ class ChatDetailViewModel @Inject constructor(
                         state.copy(
                             messages = history.messages,
                             moments = history.moments,
+                            hasReadCachedHistory = true,
                             hasLoadedHistory = state.hasLoadedHistory || history.messages.isNotEmpty(),
                             hasMore = history.olderCursor != null,
                         )

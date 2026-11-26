@@ -59,7 +59,7 @@ fun ChatDetailContent(
         }
 
         PullToRefreshBox(
-            isRefreshing = state.isLoadingHistory && state.hasLoadedHistory,
+            isRefreshing = state.isRefreshing,
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize(),
         ) {
@@ -86,9 +86,9 @@ fun ChatDetailContent(
                 }
             }
 
-            if (state.messages.isEmpty()) {
+            if (state.hasReadCachedHistory && state.messages.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    if (state.isLoadingHistory && !state.hasLoadedHistory) {
+                    if (state.isLoadingHistory && !state.isRefreshing) {
                         CircularProgressIndicator(modifier = Modifier.testTag("chat_history_loading"))
                     } else if (state.hasLoadedHistory) {
                         MomentoEmptyState(

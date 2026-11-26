@@ -66,32 +66,46 @@ fun ChatListContent(
             contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         ) {
             val friendsError = state.friendsError
-            if (friendsError != null) {
-                item(key = "friends_error", contentType = "feedback") {
+            val conversationsError = state.conversationsError
+            if (friendsError != null && friendsError == conversationsError) {
+                item(key = "shared_error", contentType = "feedback") {
                     MomentoRetryMessage(
                         message = stringResource(friendsError),
                         actionText = stringResource(R.string.chat_retry),
-                        onRetry = onRetryFriends,
-                        enabled = !state.isLoadingFriends,
+                        onRetry = onRefresh,
+                        enabled = !state.isLoading,
                         modifier = Modifier
                             .padding(horizontal = 20.dp)
-                            .testTag("chat_friends_error"),
+                            .testTag("chat_shared_error"),
                     )
                 }
-            }
+            } else {
+                if (friendsError != null) {
+                    item(key = "friends_error", contentType = "feedback") {
+                        MomentoRetryMessage(
+                            message = stringResource(friendsError),
+                            actionText = stringResource(R.string.chat_retry),
+                            onRetry = onRetryFriends,
+                            enabled = !state.isLoadingFriends,
+                            modifier = Modifier
+                                .padding(horizontal = 20.dp)
+                                .testTag("chat_friends_error"),
+                        )
+                    }
+                }
 
-            val conversationsError = state.conversationsError
-            if (conversationsError != null) {
-                item(key = "conversations_error", contentType = "feedback") {
-                    MomentoRetryMessage(
-                        message = stringResource(conversationsError),
-                        actionText = stringResource(R.string.chat_retry),
-                        onRetry = onRetryConversations,
-                        enabled = !state.isLoadingConversations,
-                        modifier = Modifier
-                            .padding(horizontal = 20.dp)
-                            .testTag("chat_conversations_error"),
-                    )
+                if (conversationsError != null) {
+                    item(key = "conversations_error", contentType = "feedback") {
+                        MomentoRetryMessage(
+                            message = stringResource(conversationsError),
+                            actionText = stringResource(R.string.chat_retry),
+                            onRetry = onRetryConversations,
+                            enabled = !state.isLoadingConversations,
+                            modifier = Modifier
+                                .padding(horizontal = 20.dp)
+                                .testTag("chat_conversations_error"),
+                        )
+                    }
                 }
             }
 
