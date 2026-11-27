@@ -19,15 +19,15 @@
 | --- | --- |
 | **Capture and share moments** | Take a photo with the front or rear camera, or pick one from your gallery. Add a caption and share it with all friends, selected friends, or keep it private. |
 | **Feed** | Swipe vertically through photos, filter by friend, react with emoji, and send a private reply to the person who posted. |
-| **Journal** | Browse moments in a timeline, filter by who posted them, and view private photos under **My Photos**. Photo owners can view new reactions and delete their photos. |
-| **Home screen widget** | Pin the widget from the Widgets section of your profile on supported launchers. Show photos from a single friend or cycle through photos in **All** mode. Tap the widget to open the moment it displays. |
-| **One-to-one chat** | Send text messages, search for conversations, and load older messages from the chat screen. Replies from the feed appear in the conversation with a preview of the original moment. |
+| **Journal** | Browse moments by date or filter by friend. **My Photos** includes private moments. See reactions to your own moments and delete photos you posted. |
+| **Home screen widget** | Pin the widget from your profile on supported launchers. Choose one friend or use the next button in **All** mode. Tap the displayed photo to open its moment. |
+| **One-to-one chat** | Send and receive text messages in real time, search conversations, and load older messages. Replies from the feed include a preview of the original moment. |
 | **Friends and notifications** | Search by username, send and respond to friend requests, and manage your friends list. View incoming requests and acceptances in Notifications and mark them as read individually or all at once. |
 | **Account and profile** | Sign in with Google or verify a Vietnamese phone number with a one-time code. Complete your profile on first sign-in and update your display name, birthday, and profile photo. |
 
 ## 🌐 System Overview
 
-- **Momento Android** renders the UI, manages sign-in state, calls the backend API, and updates the widget. This repository contains the Android source code.
+- **Momento Android** renders the UI, manages sign-in state, calls the backend API, and updates the widget. Room stores cached records, and photo previews are kept as local files.
 - **Momento Backend** provides REST APIs for profiles, photos, friends, conversations, and notifications. It publishes events over STOMP and signals new photos through Firebase Cloud Messaging. The backend runs separately from the Android app.
 - **Firebase** provides Firebase Authentication for sign-in and Firebase Cloud Messaging (FCM) for background widget updates.
 
@@ -37,8 +37,8 @@ flowchart LR
     VM --> REPO[Repository]
     REPO -->|Retrofit REST API| API[Momento Backend]
     API -->|STOMP over WebSocket| RT[RealtimeManager]
-    RT --> CHAT[ChatMemoryStore]
-    CHAT -->|Flow| REPO
+    RT -->|Incoming chat messages| ROOM[Room database]
+    REPO <-->|Read and write cached data| ROOM
     API -->|New photo event| FCM[Firebase Cloud Messaging]
     FCM --> WORK[WorkManager]
     WORK -->|Requests widget data| REPO
@@ -52,7 +52,7 @@ flowchart LR
 - **Retrofit**, **OkHttp**, **Kotlinx Serialization**, **STOMP over WebSocket (Krossbow)**
 - **CameraX**, **MediaStore**, **Coil**
 - **Firebase Authentication**, **Credential Manager**, **Firebase Cloud Messaging**
-- **Preferences DataStore**, **WorkManager**, **AppWidgetProvider**, **RemoteViews**
+- **Room**, **Preferences DataStore**, **WorkManager**, **AppWidgetProvider**, **RemoteViews**
 
 ## 📁 Project Structure
 
@@ -61,7 +61,7 @@ The Android app lives in the `:app` Gradle module. Source code is organized by f
 ```text
 app/src/main/java/com/example/momento/
 ├── app/              # Navigation and main screen
-├── core/             # Hilt, networking, sessions, real-time events, FCM, and background work
+├── core/             # Database, Hilt, networking, sessions, and background work
 ├── feature/
 │   ├── auth/         # Sign-in and profile setup
 │   ├── chat/         # Conversations, messages, and replies to moments
