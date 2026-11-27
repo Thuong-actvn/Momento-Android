@@ -22,9 +22,14 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -39,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import com.example.momento.R
 import com.example.momento.feature.moment.presentation.components.MOMENT_IMAGE_ASPECT_RATIO
 import com.example.momento.ui.components.MomentoRetryMessage
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun JournalTimeline(
@@ -50,8 +57,17 @@ fun JournalTimeline(
     onPreviewLoaded: (JournalItem, Bitmap) -> Unit = { _, _ -> },
 ) {
     val listState = rememberLazyListState()
+    val visibleSections = sections.filter { it.items.isNotEmpty() }
+    var showLoadingMore by remember(state.isLoadingMore) { mutableStateOf(false) }
+    LaunchedEffect(state.isLoadingMore) {
+        if (state.isLoadingMore) {
+            delay(350)
+            showLoadingMore = true
+        }
+    }
     val canLoadMore = state.hasMore && !state.isLoadingMore && !state.isRefreshing &&
         state.error == null && state.loadMoreError == null
+    val canAutoFill = canLoadMore && !state.isOffline
     val paginationConnection = rememberJournalPaginationConnection(
         listState = listState,
         orientation = Orientation.Vertical,
@@ -59,6 +75,18 @@ fun JournalTimeline(
         onlyAtEnd = state.isOffline,
         onLoadMore = onLoadMore,
     )
+    var lastAutoFillSize by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(canAutoFill, state.items.size, visibleSections.size) {
+        if (!canAutoFill || visibleSections.isEmpty() || lastAutoFillSize == state.items.size) {
+            return@LaunchedEffect
+        }
+        snapshotFlow {
+            listState.layoutInfo.totalItemsCount == visibleSections.size &&
+                !listState.canScrollForward && !listState.canScrollBackward
+        }.first { it }
+        lastAutoFillSize = state.items.size
+        onLoadMore()
+    }
 
     LazyColumn(
         state = listState,
@@ -70,7 +98,7 @@ fun JournalTimeline(
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         items(
-            items = sections.filter { it.items.isNotEmpty() },
+            items = visibleSections,
             key = { it.id },
         ) { section ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -88,9 +116,9 @@ fun JournalTimeline(
                 )
             }
         }
-        if (state.isLoadingMore || state.loadMoreError != null) {
+        if (showLoadingMore || state.loadMoreError != null) {
             item(key = "page_status") {
-                JournalPageStatus(state = state, onRetry = onRetry)
+                JournalPageStatus(state = state, showLoadingMore = showLoadingMore, onRetry = onRetry)
             }
         }
     }
@@ -99,6 +127,7 @@ fun JournalTimeline(
 @Composable
 private fun JournalPageStatus(
     state: JournalUiState,
+    showLoadingMore: Boolean,
     onRetry: () -> Unit,
 ) {
     Box(
@@ -107,7 +136,7 @@ private fun JournalPageStatus(
     ) {
         val error = state.loadMoreError
         when {
-            state.isLoadingMore -> {
+            showLoadingMore -> {
                 CircularProgressIndicator(modifier = Modifier.testTag("journal_loading_more"))
             }
             error != null -> {

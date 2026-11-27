@@ -6,6 +6,7 @@ import com.example.momento.feature.moment.data.remote.MomentException
 import com.example.momento.feature.moment.domain.model.CursorPage
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.repository.MomentRepository
+import java.time.Instant
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -16,14 +17,16 @@ import kotlinx.coroutines.ensureActive
 /** Loads Journal photos and keeps a separate cursor for each API endpoint. */
 class JournalPhotoLoader(private val moments: MomentRepository) {
     private var pages = emptyMap<JournalSource, JournalPage>()
+    private val pendingPhotos = mutableMapOf<String, Moment>()
 
     fun reset() {
         pages = emptyMap()
+        pendingPhotos.clear()
     }
 
     suspend fun load(filter: JournalFilter, load: JournalLoad): JournalPhotoResult {
-        val keepPages = load == JournalLoad.MORE || load == JournalLoad.SYNC
-        val requestPages = if (keepPages && pages.isNotEmpty()) pages else newPages(filter)
+        val requestPages = if (load == JournalLoad.INITIAL || pages.isEmpty()) newPages(filter) else pages
+        val refreshHead = load == JournalLoad.REFRESH || load == JournalLoad.SYNC
         val pendingPages = if (load == JournalLoad.MORE) {
             requestPages.filterValues { it.hasMore }
         } else {
@@ -34,8 +37,8 @@ class JournalPhotoLoader(private val moments: MomentRepository) {
         val results = coroutineScope {
             pendingPages.map { (source, page) ->
                 async {
-                    val result = if (load == JournalLoad.SYNC) {
-                        loadMomentUpdates(page.latestMomentId) { cursor ->
+                    val result = if (refreshHead) {
+                        loadMomentUpdates(page.latestMomentId, page.latestMomentAt) { cursor ->
                             requestPage(source, filter, cursor)
                         }
                     } else {
@@ -53,32 +56,49 @@ class JournalPhotoLoader(private val moments: MomentRepository) {
         }
 
         val successfulPages = results.filter { it.result.isSuccess }
-        val newMoments = mutableListOf<Moment>()
         var hasInvalidCursor = false
         val isOffline = successfulPages.any { it.result.getOrThrow().fromCache } ||
             errors.any { (it as? MomentException)?.reason == MomentError.NETWORK }
 
         for (pageResult in successfulPages) {
             val page = pageResult.result.getOrThrow()
-            newMoments.addAll(page.data)
+            for (photo in page.data) {
+                pendingPhotos[photo.id] = photo
+            }
             if (page.fromCache) continue
 
             val tracker = requestPages.getValue(pageResult.source)
-            if (load == JournalLoad.SYNC && tracker.latestMomentId != null) {
-                // Older pages keep their cursors; only advance the checkpoint after a complete catch-up.
-                tracker.latestMomentId = page.data.firstOrNull()?.id ?: tracker.latestMomentId
+            if (refreshHead && tracker.latestMomentId != null) {
+                // Refresh the head of each source while keeping its cursor for older photos.
+                tracker.updateHead(page.data)
             } else if (!tracker.accept(page)) {
                 hasInvalidCursor = true
             }
         }
 
-        // A fully failed refresh must leave the previous cursors available for retry.
         if (successfulPages.isNotEmpty()) {
             pages = requestPages
         }
 
+        // Wait for both sources to cover a date before showing older groups.
+        val visibleSince = if (filter == JournalFilter.All && !isOffline) {
+            pages.values.filter { it.hasMore }.mapNotNull { it.oldestLoadedAt }.maxOrNull()
+        } else {
+            null
+        }
+        val visiblePhotos = mutableListOf<Moment>()
+        val waiting = pendingPhotos.values.iterator()
+        while (waiting.hasNext()) {
+            val photo = waiting.next()
+            val createdAt = photo.createdAt
+            if (visibleSince == null || (createdAt != null && createdAt >= visibleSince)) {
+                visiblePhotos.add(photo)
+                waiting.remove()
+            }
+        }
+
         return JournalPhotoResult(
-            moments = newMoments,
+            moments = visiblePhotos,
             errors = errors,
             hasSuccessfulPage = successfulPages.isNotEmpty(),
             hasMore = pages.values.any { it.hasMore },
@@ -135,9 +155,20 @@ private data class JournalPageResult(
 
 private class JournalPage {
     var latestMomentId: String? = null
+        private set
+    var latestMomentAt: Instant? = null
+        private set
+    var oldestLoadedAt: Instant? = null
+        private set
     var cursor: String? = null
     var hasMore: Boolean = true
     private val usedCursors = mutableSetOf<String>()
+
+    fun updateHead(photos: List<Moment>) {
+        val newest = photos.firstOrNull() ?: return
+        latestMomentId = newest.id
+        latestMomentAt = newest.createdAt
+    }
 
     fun accept(page: CursorPage<Moment>): Boolean {
         val invalidCursor = page.nextCursor.isNullOrBlank() ||
@@ -148,7 +179,12 @@ private class JournalPage {
             return false
         }
 
-        if (latestMomentId == null) latestMomentId = page.data.firstOrNull()?.id
+        if (latestMomentId == null) updateHead(page.data)
+        val oldestOnPage = page.data.mapNotNull { it.createdAt }.minOrNull()
+        val previousOldest = oldestLoadedAt
+        if (oldestOnPage != null && (previousOldest == null || oldestOnPage < previousOldest)) {
+            oldestLoadedAt = oldestOnPage
+        }
         cursor?.let { usedCursors.add(it) }
         cursor = page.nextCursor
         hasMore = page.hasMore

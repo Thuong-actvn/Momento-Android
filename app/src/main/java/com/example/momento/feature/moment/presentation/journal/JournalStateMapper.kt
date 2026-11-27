@@ -15,12 +15,8 @@ object JournalStateMapper {
         load: JournalLoad,
         user: CurrentUser?,
     ): JournalUiState {
-        val oldItems = when {
-            load == JournalLoad.INITIAL -> emptyList()
-            load == JournalLoad.REFRESH && result.hasSuccessfulPage && !result.isOffline -> emptyList()
-            else -> current.items
-        }
-        val previousById = current.items.associateBy { it.moment.id }
+        val oldItems = if (load == JournalLoad.INITIAL) emptyList() else current.items
+        val previousById = oldItems.associateBy { it.moment.id }
         val newItems = result.moments.map { moment ->
             val previous = previousById[moment.id]
             val preview = if (previous != null && previous.moment.imageUrl == moment.imageUrl) {
@@ -30,11 +26,7 @@ object JournalStateMapper {
             }
             JournalItem(moment = moment, preview = preview)
         }
-        val combined = if (load == JournalLoad.REFRESH || load == JournalLoad.SYNC) {
-            newItems + oldItems
-        } else {
-            oldItems + newItems
-        }
+        val combined = if (load == JournalLoad.MORE) oldItems + newItems else newItems + oldItems
         val items = combined.distinctBy { it.moment.id }
         val error = loadError(result, load, items.isEmpty())
         val refreshFailed = load == JournalLoad.REFRESH &&
