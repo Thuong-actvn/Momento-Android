@@ -35,5 +35,5 @@ suspend fun loadMomentUpdates(
         page = loadPage(cursor).getOrThrow()
     }
 
-    CursorPage(moments.distinctBy { it.id }, page.nextCursor, page.hasMore)
+    CursorPage(moments.distinctBy { it.id }, page.nextCursor, page.hasMore, fromCache = page.fromCache)
 }

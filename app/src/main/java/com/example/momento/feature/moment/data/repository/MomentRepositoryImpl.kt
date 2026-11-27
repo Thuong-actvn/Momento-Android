@@ -1,10 +1,14 @@
 package com.example.momento.feature.moment.data.repository
 
+import android.graphics.Bitmap
+import android.util.Log
 import com.example.momento.core.common.suspendRunCatching
 import com.example.momento.core.network.ApiException
+import com.example.momento.core.realtime.RealtimeNetworkMonitor
 import com.example.momento.core.user.data.CurrentUserStore
 import com.example.momento.feature.moment.data.local.MomentImageStore
 import com.example.momento.feature.moment.data.local.MomentMemoryStore
+import com.example.momento.feature.moment.data.local.MomentCacheStore
 import com.example.momento.feature.moment.data.remote.MomentApi
 import com.example.momento.feature.moment.data.remote.MomentError
 import com.example.momento.feature.moment.data.remote.MomentException
@@ -16,11 +20,14 @@ import com.example.momento.feature.moment.domain.model.CursorPage
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.model.MomentReaction
 import com.example.momento.feature.moment.domain.repository.MomentRepository
+import dagger.Lazy
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -36,33 +43,57 @@ class MomentRepositoryImpl @Inject constructor(
     private val api: MomentApi,
     private val userStore: CurrentUserStore,
     private val memory: MomentMemoryStore,
+    private val network: RealtimeNetworkMonitor,
+    private val journal: Lazy<MomentCacheStore>,
 ) : MomentRepository {
     override val cachedMoments = memory.moments
 
     override suspend fun getMoment(photoId: String): Result<Moment> = requestResult { session ->
         val id = validateId(photoId)
         try {
-            val response = api.getPhoto(id)
-            val moment = decodeResponse {
-                response.toDomain().also { require(it.id == id) { "Photo ID does not match the request" } }
-            }
+            if (!canUseNetwork()) throw MomentException(MomentError.NETWORK)
+            val moment = fetchMoment(id)
             memory.merge(session, listOf(moment))
+            cacheSafely { journal.get().savePhoto(session, moment) }
             moment
         } catch (error: Exception) {
             if (error is CancellationException) throw error
             val failure = error.toMomentException()
-            when (failure.backendCode) {
-                "PHOTO_NOT_FOUND" -> memory.remove(session, id)
-                "PHOTO_ACCESS_DENIED" -> memory.evict(session, id)
+            if (failure.backendCode == "PHOTO_NOT_FOUND" || failure.backendCode == "PHOTO_ACCESS_DENIED") {
+                removeJournalPhoto(session, id)
+            }
+            if (failure.reason == MomentError.NETWORK) {
+                val cached = journal.get().getPhoto(session, id)
+                if (cached != null) return@requestResult cached.moment
             }
             throw failure
         }
     }
 
+    override suspend fun saveMomentPreview(photo: Moment, bitmap: Bitmap): File? {
+        val session = userStore.sessionOrNull() ?: return null
+        return suspendRunCatching { journal.get().saveLoadedPreview(session, photo, bitmap) }
+            .onFailure { Log.w("MomentoJournal", "Unable to save the displayed photo", it) }
+            .getOrNull()
+    }
+
+    private fun canUseNetwork(): Boolean = network.hasNetwork() && !userStore.isUsingCachedSession()
+
+    private suspend fun fetchMoment(id: String): Moment {
+        val response = api.getPhoto(id)
+        return decodeResponse {
+            val photo = response.toDomain()
+            require(photo.id == id) { "Photo ID does not match the request" }
+            photo
+        }
+    }
+
     override suspend fun getFeed(cursor: String?, limit: Int): Result<CursorPage<Moment>> = requestResult { session ->
-        validatePage(cursor, limit)
-        val response = api.getFeed(cursor, limit)
-        decodeResponse { response.toDomain() }.also { memory.merge(session, it.data) }
+        loadCachedPage(session, cursor, ownerId = null, includeOwn = false) {
+            validatePage(cursor, limit)
+            val response = api.getFeed(cursor, limit)
+            decodeResponse { response.toDomain() }
+        }
     }
 
     override suspend fun getFriendFeed(
@@ -70,16 +101,61 @@ class MomentRepositoryImpl @Inject constructor(
         cursor: String?,
         limit: Int,
     ): Result<CursorPage<Moment>> = requestResult { session ->
-        validateId(friendId)
-        validatePage(cursor, limit)
-        val response = api.getFriendFeed(friendId, cursor, limit)
-        decodeResponse { response.toDomain() }.also { memory.merge(session, it.data) }
+        val id = validateId(friendId)
+        loadCachedPage(session, cursor, ownerId = id) {
+            validatePage(cursor, limit)
+            val response = api.getFriendFeed(id, cursor, limit)
+            decodeResponse { response.toDomain() }
+        }
     }
 
     override suspend fun getMyMoments(cursor: String?, limit: Int): Result<CursorPage<Moment>> = requestResult { session ->
+        loadCachedPage(session, cursor, ownerId = session.userId) {
+            fetchMyMoments(cursor, limit)
+        }
+    }
+
+    private suspend fun loadCachedPage(
+        session: CurrentUserStore.Session,
+        cursor: String?,
+        ownerId: String?,
+        includeOwn: Boolean = true,
+        fetch: suspend () -> CursorPage<Moment>,
+    ): CursorPage<Moment> {
+        try {
+            if (!canUseNetwork()) throw MomentException(MomentError.NETWORK)
+            val page = fetch()
+            if (ownerId != null && page.data.any { it.ownerId != ownerId }) {
+                throw MomentException(MomentError.INVALID_RESPONSE)
+            }
+            memory.merge(session, page.data)
+            cacheSafely { journal.get().savePage(session, page, saveOwnCursor = false) }
+            return page
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            val failure = error.toMomentException()
+            if (failure.backendCode == "NOT_FRIENDS" && ownerId != null && ownerId != session.userId) {
+                cacheSafely { journal.get().removeFriend(session, ownerId) }
+            }
+            if (failure.reason == MomentError.NETWORK && cursor == null) {
+                val cached = journal.get().getCachedPhotos(session, ownerId, includeOwn)
+                if (cached.isNotEmpty()) return CursorPage(cached, null, false, fromCache = true)
+            }
+            throw failure
+        }
+    }
+
+    private suspend fun cacheSafely(write: suspend () -> Unit) {
+        suspendRunCatching { write() }.onFailure { error ->
+            Log.w("MomentoJournal", "Unable to update the moment cache", error)
+        }
+    }
+
+    private suspend fun fetchMyMoments(cursor: String?, limit: Int = 10): CursorPage<Moment> {
         validatePage(cursor, limit)
         val response = api.getMyPhotos(cursor, limit)
-        decodeResponse { response.toDomain() }.also { memory.merge(session, it.data) }
+        return decodeResponse { response.toDomain() }
     }
 
     override suspend fun uploadMoment(
@@ -121,7 +197,17 @@ class MomentRepositoryImpl @Inject constructor(
             audienceUserIds = recipients,
             metadata = metadataJson,
         )
-        decodeResponse { response.toDomain() }.also { memory.merge(session, listOf(it)) }
+        val photo = decodeResponse { response.toDomain() }
+        memory.merge(session, listOf(photo))
+        withContext(NonCancellable) {
+            suspendRunCatching {
+                val id = validateId(photo.id)
+                journal.get().savePhoto(session, photo.copy(id = id))
+            }.onFailure { error ->
+                Log.w("MomentoJournal", "Unable to cache the uploaded photo", error)
+            }
+        }
+        photo
     }
 
     override suspend fun reactToMoment(momentId: String, emoji: String): Result<Unit> = requestResult {
@@ -152,9 +238,19 @@ class MomentRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteMoment(momentId: String): Result<Unit> = requestResult { session ->
-        validateId(momentId)
-        api.deletePhoto(momentId)
-        memory.remove(session, momentId)
+        val id = validateId(momentId)
+        api.deletePhoto(id)
+        removeJournalPhoto(session, id)
+    }
+
+    private suspend fun removeJournalPhoto(session: CurrentUserStore.Session, id: String) {
+        withContext(NonCancellable) {
+            memory.remove(session, id)
+            // A cache error must not turn a confirmed server deletion into a failed delete.
+            suspendRunCatching { journal.get().deletePhoto(session, id) }.onFailure { error ->
+                Log.w("MomentoJournal", "Unable to remove the deleted photo from Room", error)
+            }
+        }
     }
 
     private fun validatePage(cursor: String?, limit: Int) {

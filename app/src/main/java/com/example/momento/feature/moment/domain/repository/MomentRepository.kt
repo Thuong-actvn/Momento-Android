@@ -1,5 +1,6 @@
 package com.example.momento.feature.moment.domain.repository
 
+import android.graphics.Bitmap
 import com.example.momento.feature.moment.domain.model.AudienceType
 import com.example.momento.feature.moment.domain.model.CursorPage
 import com.example.momento.feature.moment.domain.model.Moment
@@ -24,6 +25,8 @@ interface MomentRepository {
     ): Result<CursorPage<Moment>>
 
     suspend fun getMyMoments(cursor: String? = null, limit: Int = 10): Result<CursorPage<Moment>>
+
+    suspend fun saveMomentPreview(photo: Moment, bitmap: Bitmap): File?
 
     /** CUSTOM with no viewers saves for the owner only. Uploads are never retried here. */
     suspend fun uploadMoment(

@@ -4,11 +4,16 @@ import androidx.room.withTransaction
 import com.example.momento.core.database.MomentoDatabase
 import com.example.momento.core.user.domain.model.CurrentUser
 import com.example.momento.feature.auth.domain.repository.SavedAccount
+import com.example.momento.feature.moment.data.local.JournalPreviewStore
 import javax.inject.Inject
 
-class OfflineSessionStore @Inject constructor(private val database: MomentoDatabase) {
+class OfflineSessionStore @Inject constructor(
+    private val database: MomentoDatabase,
+    private val previews: JournalPreviewStore,
+) {
     private val sessions = database.offlineSessionDao()
     private val chat = database.chatDao()
+    private val journal = database.momentCacheDao()
 
     suspend fun read(): SavedAccount? {
         val session = sessions.read() ?: return null
@@ -22,7 +27,7 @@ class OfflineSessionStore @Inject constructor(private val database: MomentoDatab
             if (previous != null &&
                 (previous.firebaseUid != firebaseUid || previous.backendUserId != user.id)
             ) {
-                deleteChat(previous.backendUserId)
+                deleteAccountCache(previous.backendUserId)
             }
             sessions.save(
                 OfflineSessionEntity(
@@ -39,16 +44,20 @@ class OfflineSessionStore @Inject constructor(private val database: MomentoDatab
             val savedUserId = sessions.read()?.backendUserId
             sessions.delete()
             if (savedUserId != null) {
-                deleteChat(savedUserId)
+                deleteAccountCache(savedUserId)
             }
             if (activeUserId != null && activeUserId != savedUserId) {
-                deleteChat(activeUserId)
+                deleteAccountCache(activeUserId)
             }
         }
     }
 
-    private suspend fun deleteChat(userId: String) {
+    private suspend fun deleteAccountCache(userId: String) {
         chat.deleteConversations(userId)
         chat.deleteSyncState(userId)
+        journal.deleteAccountPhotos(userId)
+        journal.deleteFriends(userId)
+        journal.deleteSyncState(userId)
+        previews.deleteAccount(userId)
     }
 }

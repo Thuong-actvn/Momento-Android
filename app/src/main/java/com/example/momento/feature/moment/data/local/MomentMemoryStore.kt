@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** Moment đã tải trong phiên, dùng làm ngữ cảnh cho tin PHOTO_COMMENT. */
@@ -54,15 +55,22 @@ class MomentMemoryStore @Inject constructor(
 
     fun remove(session: CurrentUserStore.Session, momentId: String) {
         users.withSession(session) {
-            val current = snapshot.value
-            if (current.generation == session.generation) {
-                snapshot.value = current.copy(
-                    moments = current.moments - momentId,
-                    removedIds = current.removedIds + momentId,
-                )
-            }
+            val current = snapshot.value.takeIf { it.generation == session.generation }
+                ?: Snapshot(session.generation)
+            snapshot.value = current.copy(
+                moments = current.moments - momentId,
+                removedIds = current.removedIds + momentId,
+            )
         }
     }
+
+    fun removedPhotoIds(session: CurrentUserStore.Session): Set<String> =
+        snapshot.value.takeIf { it.generation == session.generation }?.removedIds.orEmpty()
+
+    fun observeRemovedPhotoIds(session: CurrentUserStore.Session) =
+        snapshot.map { current ->
+            if (current.generation == session.generation) current.removedIds else emptySet()
+        }.distinctUntilChanged()
 
     fun evict(session: CurrentUserStore.Session, momentId: String) {
         users.withSession(session) {

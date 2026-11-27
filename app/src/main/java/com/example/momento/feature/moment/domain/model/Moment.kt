@@ -1,6 +1,7 @@
 package com.example.momento.feature.moment.domain.model
 
 import java.time.Instant
+import java.io.File
 import kotlinx.serialization.json.JsonElement
 
 enum class AudienceType {
@@ -25,6 +26,7 @@ data class Moment(
     val metadata: JsonElement?,
     // Upload responses may arrive before the backend populates the creation timestamp.
     val createdAt: Instant?,
+    val preview: File? = null,
 )
 
 data class GalleryImage(val id: String, val uri: String)
@@ -33,6 +35,7 @@ data class CursorPage<T>(
     val data: List<T>,
     val nextCursor: String?,
     val hasMore: Boolean,
+    val fromCache: Boolean = false,
 )
 
 data class MomentReaction(
