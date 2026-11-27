@@ -89,6 +89,7 @@ fun JournalRouteContent(
                 onRequestDelete = detailViewModel::requestDelete,
                 onDismissDelete = detailViewModel::dismissDeleteConfirmation,
                 onDelete = detailViewModel::delete,
+                onReloadPhoto = detailViewModel::reloadPhoto,
             )
         }
     }

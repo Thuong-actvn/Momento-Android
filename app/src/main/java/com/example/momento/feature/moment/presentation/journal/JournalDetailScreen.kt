@@ -1,6 +1,7 @@
 package com.example.momento.feature.moment.presentation.journal
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +33,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
@@ -53,6 +56,7 @@ fun JournalDetailScreen(
     onDismissDelete: () -> Unit,
     onDelete: () -> Unit,
     backContentDescription: String = stringResource(R.string.journal_close_detail),
+    onReloadPhoto: (() -> Unit)? = null,
 ) {
     val item = state.item ?: return
     val ownerName = if (item.isOwn) {
@@ -72,7 +76,7 @@ fun JournalDetailScreen(
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().testTag("journal_detail")) {
             JournalDetailTopBar(
-                isOwn = item.isOwn,
+                isOwn = item.isOwn && state.canUseOnlineActions,
                 enabled = !state.isDeleting,
                 onClose = onClose,
                 onDelete = onRequestDelete,
@@ -85,14 +89,40 @@ fun JournalDetailScreen(
             ) {
                 item {
                     MomentImageFrame(modifier = Modifier.fillMaxWidth()) {
-                        JournalPhoto(
-                            imageUrl = item.moment.imageUrl,
-                            contentDescription = stringResource(R.string.journal_image_description, ownerName),
-                        )
+                        val photoError = state.photoError
+                        when {
+                            state.isPhotoLoading -> {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                            photoError != null -> {
+                                Column(
+                                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    Text(stringResource(photoError), textAlign = TextAlign.Center)
+                                    if (onReloadPhoto != null && photoError != R.string.journal_photo_unavailable) {
+                                        TextButton(onClick = onReloadPhoto) {
+                                            Text(stringResource(R.string.journal_retry))
+                                        }
+                                    }
+                                }
+                            }
+                            else -> {
+                                JournalPhoto(
+                                    imageUrl = journalImageSource(item, state.isOffline),
+                                    contentDescription = stringResource(R.string.journal_image_description, ownerName),
+                                    isOffline = state.isOffline,
+                                )
+                            }
+                        }
                     }
                 }
-                item { JournalDetailInfo(item = item, ownerName = ownerName) }
-                if (item.isOwn) {
+                if (!state.isPhotoLoading && state.photoError == null) {
+                    item { JournalDetailInfo(item = item, ownerName = ownerName) }
+                }
+                if (item.isOwn && state.canUseOnlineActions) {
                     item {
                         JournalReactionsHeader(state = state, onLoad = onLoadReactions)
                     }

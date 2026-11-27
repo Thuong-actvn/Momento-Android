@@ -82,6 +82,46 @@ class MomentRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun openJournalPhoto(photo: Moment): Result<MyJournalPhoto> = requestResult { session ->
+        val id = validateId(photo.id)
+        checkPhotoWasNotRemoved(session, id)
+
+        if (!canUseNetwork()) return@requestResult offlineJournalPhoto(session, photo, id)
+
+        val freshPhoto = try {
+            val response = fetchMoment(id)
+            if (response.ownerId != photo.ownerId) {
+                throw MomentException(MomentError.REQUEST_FAILED, backendCode = "PHOTO_ACCESS_DENIED")
+            }
+            response
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            checkSession(session)
+            val failure = error.toMomentException()
+            if (failure.backendCode == "PHOTO_NOT_FOUND" || failure.backendCode == "PHOTO_ACCESS_DENIED") {
+                removeJournalPhoto(session, id)
+            }
+            if (failure.reason == MomentError.NETWORK) {
+                return@requestResult offlineJournalPhoto(session, photo, id)
+            }
+            throw failure
+        }
+
+        checkSession(session)
+        checkPhotoWasNotRemoved(session, id)
+        val store = journal.get()
+        val preview = suspendRunCatching {
+            val bitmap = store.downloadPreview(freshPhoto.imageUrl)
+            store.savePhoto(session, freshPhoto, bitmap)
+        }.onFailure { error ->
+            Log.w("MomentoJournal", "Unable to cache the opened Journal photo", error)
+        }.getOrNull()
+        checkPhotoWasNotRemoved(session, id)
+        memory.merge(session, listOf(freshPhoto))
+        MyJournalPhoto(moment = freshPhoto, preview = preview, isOffline = !network.hasNetwork())
+    }
+
     override suspend fun saveMomentPreview(photo: Moment, bitmap: Bitmap): File? {
         val session = userStore.sessionOrNull() ?: return null
         return suspendRunCatching { journal.get().saveLoadedPreview(session, photo, bitmap) }
@@ -90,6 +130,26 @@ class MomentRepositoryImpl @Inject constructor(
     }
 
     private fun canUseNetwork(): Boolean = network.hasNetwork() && !userStore.isUsingCachedSession()
+
+    private suspend fun offlineJournalPhoto(
+        session: CurrentUserStore.Session,
+        photo: Moment,
+        id: String,
+    ): MyJournalPhoto {
+        val cached = journal.get().getPhoto(session, id)
+        checkPhotoWasNotRemoved(session, id)
+        return if (cached == null) {
+            MyJournalPhoto(moment = photo.copy(preview = null), isOffline = true)
+        } else {
+            cached.copy(isOffline = true)
+        }
+    }
+
+    private fun checkPhotoWasNotRemoved(session: CurrentUserStore.Session, id: String) {
+        if (id in memory.removedPhotoIds(session)) {
+            throw MomentException(MomentError.REQUEST_FAILED, backendCode = "PHOTO_NOT_FOUND")
+        }
+    }
 
     private suspend fun fetchMoment(id: String): Moment {
         val response = api.getPhoto(id)

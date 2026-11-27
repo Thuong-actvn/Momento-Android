@@ -37,6 +37,8 @@ interface MomentRepository {
     /** Save the page after the stored cursor and return whether there are more pages. */
     suspend fun loadMoreMyJournal(): Result<Boolean>
 
+    suspend fun openJournalPhoto(photo: Moment): Result<MyJournalPhoto>
+
     suspend fun saveMomentPreview(photo: Moment, bitmap: Bitmap): File?
 
     /** CUSTOM with no viewers saves for the owner only. Uploads are never retried here. */

@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.momento.R
+import com.example.momento.core.realtime.RealtimeNetworkMonitor
 import com.example.momento.core.user.data.CurrentUserStore
 import com.example.momento.feature.moment.data.realtime.MomentUpdates
 import com.example.momento.feature.moment.data.remote.MomentError
@@ -33,13 +34,20 @@ data class JournalDetailUiState(
     val isDeleting: Boolean = false,
     @param:StringRes val deleteError: Int? = null,
     val deletedMomentId: String? = null,
-)
+    val isPhotoLoading: Boolean = false,
+    val isOffline: Boolean = false,
+    @param:StringRes val photoError: Int? = null,
+) {
+    val canUseOnlineActions: Boolean
+        get() = !isOffline && !isPhotoLoading && photoError == null
+}
 
 @HiltViewModel
 class JournalDetailViewModel @Inject constructor(
     private val moments: MomentRepository,
     private val userStore: CurrentUserStore,
     private val updates: MomentUpdates,
+    private val network: RealtimeNetworkMonitor,
 ) : ViewModel() {
     private val _state = MutableStateFlow(JournalDetailUiState())
     val state = _state.asStateFlow()
@@ -49,7 +57,11 @@ class JournalDetailViewModel @Inject constructor(
     private var reactionsVisible = false
     private var reactionVersion = updates.reactionVersion.value
     private var deleteJob: Job? = null
+    private var photoJob: Job? = null
     private val sessionVersion = userStore.sessionVersion.value
+    private val networkWatch = network.watch {
+        viewModelScope.launch { reloadOfflinePhoto() }
+    }
 
     init {
         viewModelScope.launch {
@@ -58,6 +70,9 @@ class JournalDetailViewModel @Inject constructor(
                     clearSession()
                 }
             }
+        }
+        viewModelScope.launch {
+            userStore.completedProfileSession.collect { reloadOfflinePhoto() }
         }
         viewModelScope.launch {
             updates.reactionVersion.collectLatest { version ->
@@ -73,18 +88,67 @@ class JournalDetailViewModel @Inject constructor(
     fun open(item: JournalItem) {
         val userId = userStore.currentUser.value?.id ?: return
         if (_state.value.isDeleting || _state.value.deletedMomentId != null) return
+        photoJob?.cancel()
         stopLoadingReactions()
+        val isOwn = item.moment.ownerId == userId
         _state.value = JournalDetailUiState(
-            item = item.copy(isOwn = item.moment.ownerId == userId),
+            item = item.copy(isOwn = isOwn),
         )
-        if (reactionsVisible) {
-            loadReactions()
+        reloadPhoto()
+    }
+
+    fun reloadPhoto() {
+        val item = _state.value.item ?: return
+        val current = _state.value
+        if (current.isPhotoLoading || current.isDeleting) return
+        if (current.photoError == R.string.journal_photo_unavailable) return
+
+        val version = userStore.sessionVersion.value
+        val photoId = item.moment.id
+        stopLoadingReactions()
+        _state.update { it.copy(isPhotoLoading = true, photoError = null) }
+        photoJob = viewModelScope.launch {
+            val result = moments.openJournalPhoto(item.moment)
+            currentCoroutineContext().ensureActive()
+            if (userStore.sessionVersion.value != version || _state.value.item?.moment?.id != photoId) return@launch
+
+            val photo = result.getOrNull()
+            if (photo != null) {
+                _state.update {
+                    it.copy(
+                        item = item.copy(moment = photo.moment, preview = photo.preview),
+                        isPhotoLoading = false,
+                        isOffline = photo.isOffline,
+                    )
+                }
+                loadReactions()
+            } else {
+                val error = result.exceptionOrNull() ?: return@launch
+                val code = (error as? MomentException)?.backendCode
+                val unavailable = code == "PHOTO_NOT_FOUND" || code == "PHOTO_ACCESS_DENIED"
+                _state.update {
+                    it.copy(
+                        isPhotoLoading = false,
+                        photoError = errorMessage(error, R.string.journal_image_error),
+                        deletedMomentId = if (unavailable) photoId else null,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun reloadOfflinePhoto() {
+        if (reactionsVisible && _state.value.isOffline && network.hasNetwork() &&
+            userStore.completedProfileSession.value != null
+        ) {
+            reloadPhoto()
         }
     }
 
     fun close() {
         if (_state.value.isDeleting) return
         reactionsVisible = false
+        photoJob?.cancel()
         stopLoadingReactions()
         _state.value = JournalDetailUiState(deletedMomentId = _state.value.deletedMomentId)
     }
@@ -94,6 +158,7 @@ class JournalDetailViewModel @Inject constructor(
         if (reactionsVisible == visible) return
         reactionsVisible = visible
         if (visible) {
+            reloadOfflinePhoto()
             loadReactions()
         } else {
             stopLoadingReactions()
@@ -102,7 +167,7 @@ class JournalDetailViewModel @Inject constructor(
 
     fun loadReactions() {
         val item = ownItem() ?: return
-        if (!reactionsVisible || _state.value.isDeleting) return
+        if (!reactionsVisible || _state.value.isDeleting || !_state.value.canUseOnlineActions) return
         reactionRefreshRequested = true
         if (_state.value.isLoadingReactions) return
         val photoId = item.moment.id
@@ -162,7 +227,7 @@ class JournalDetailViewModel @Inject constructor(
     }
 
     fun requestDelete() {
-        if (ownItem() == null || _state.value.isDeleting) return
+        if (ownItem() == null || _state.value.isDeleting || !_state.value.canUseOnlineActions) return
         _state.update { it.copy(showDeleteConfirmation = true, deleteError = null) }
     }
 
@@ -175,7 +240,7 @@ class JournalDetailViewModel @Inject constructor(
         val item = ownItem() ?: return
         val version = userStore.sessionVersion.value
         val current = _state.value
-        if (!current.showDeleteConfirmation || current.isDeleting) return
+        if (!current.showDeleteConfirmation || current.isDeleting || !current.canUseOnlineActions) return
         val photoId = item.moment.id
         stopLoadingReactions()
         _state.update { it.copy(isDeleting = true, deleteError = null) }
@@ -228,8 +293,13 @@ class JournalDetailViewModel @Inject constructor(
 
     private fun clearSession() {
         reactionsVisible = false
+        photoJob?.cancel()
         stopLoadingReactions()
         deleteJob?.cancel()
         _state.value = JournalDetailUiState()
+    }
+
+    override fun onCleared() {
+        networkWatch.close()
     }
 }
