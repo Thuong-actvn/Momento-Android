@@ -8,8 +8,9 @@ import com.example.momento.feature.chat.data.local.ChatDao
 import com.example.momento.feature.chat.data.local.ChatMessageEntity
 import com.example.momento.feature.chat.data.local.ChatSyncStateEntity
 import com.example.momento.feature.chat.data.local.ConversationEntity
-import com.example.momento.feature.moment.data.local.MyJournalDao
-import com.example.momento.feature.moment.data.local.MyJournalPhotoEntity
+import com.example.momento.feature.moment.data.local.CachedMomentEntity
+import com.example.momento.feature.moment.data.local.CachedMomentFriendEntity
+import com.example.momento.feature.moment.data.local.MomentCacheDao
 import com.example.momento.feature.moment.data.local.MyJournalSyncStateEntity
 
 @Database(
@@ -18,14 +19,15 @@ import com.example.momento.feature.moment.data.local.MyJournalSyncStateEntity
         ChatMessageEntity::class,
         ChatSyncStateEntity::class,
         OfflineSessionEntity::class,
-        MyJournalPhotoEntity::class,
+        CachedMomentEntity::class,
         MyJournalSyncStateEntity::class,
+        CachedMomentFriendEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class MomentoDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
     abstract fun offlineSessionDao(): OfflineSessionDao
-    abstract fun myJournalDao(): MyJournalDao
+    abstract fun momentCacheDao(): MomentCacheDao
 }
