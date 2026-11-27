@@ -27,6 +27,7 @@ fun FeedPager(
     actions: FeedActions,
     reactionsEnabled: Boolean = true,
     sentReactions: Map<String, String> = emptyMap(),
+    isOffline: Boolean = false,
 ) {
     val currentItems by rememberUpdatedState(items)
     val currentActions by rememberUpdatedState(actions)
@@ -74,6 +75,8 @@ fun FeedPager(
                     },
                     modifier = Modifier.width(cardWidth),
                     compact = cardWidth < 280.dp,
+                    isOffline = isOffline,
+                    onImageLoaded = { bitmap -> actions.onPreviewLoaded(item.moment, bitmap) },
                 )
             }
         }

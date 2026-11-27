@@ -41,6 +41,7 @@
     <string name="journal_delete_error">Không thể xóa kỷ niệm. Vui lòng thử lại.</string>
     <string name="journal_owner_required">Chỉ chủ ảnh mới có thể thực hiện thao tác này.</string>
     <string name="journal_photo_unavailable">Kỷ niệm này không còn khả dụng.</string>
+    <string name="moment_photo_needs_network">Cần kết nối mạng để xem ảnh này.</string>
     <plurals name="journal_moment_count">
         <item quantity="other">%1$d kỷ niệm</item>
     </plurals>

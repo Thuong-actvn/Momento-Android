@@ -1,9 +1,11 @@
 package com.example.momento.feature.moment.presentation.feed
 
+import android.graphics.Bitmap
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.momento.R
+import com.example.momento.core.realtime.RealtimeNetworkMonitor
 import com.example.momento.core.user.data.CurrentUserStore
 import com.example.momento.core.user.domain.model.PublicProfile
 import com.example.momento.feature.friend.data.remote.FriendError
@@ -37,6 +39,7 @@ class FeedViewModel @Inject constructor(
     private val userStore: CurrentUserStore,
     private val savedState: SavedStateHandle,
     private val updates: MomentUpdates,
+    private val network: RealtimeNetworkMonitor,
 ) : ViewModel() {
     private val _state = MutableStateFlow(FeedUiState(isLoading = true))
     val state = _state.asStateFlow()
@@ -49,6 +52,10 @@ class FeedViewModel @Inject constructor(
     private val usedCursors = mutableSetOf<String>()
     private var momentVersion = updates.version.value
     private var realtimeRefreshRequested = false
+    private var isVisible = false
+    private val networkWatch = network.watch {
+        viewModelScope.launch { refreshWhenReady() }
+    }
 
     init {
         viewModelScope.launch {
@@ -81,6 +88,11 @@ class FeedViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            userStore.completedProfileSession.collect {
+                if (_state.value.isOffline) refreshWhenReady()
+            }
+        }
+        viewModelScope.launch {
             updates.version.collectLatest { version ->
                 if (version != momentVersion) {
                     momentVersion = version
@@ -88,6 +100,39 @@ class FeedViewModel @Inject constructor(
                     realtimeRefreshRequested = true
                     refreshIfRequested()
                 }
+            }
+        }
+    }
+
+    fun setVisible(visible: Boolean) {
+        isVisible = visible
+        if (visible && _state.value.isOffline) refreshWhenReady()
+    }
+
+    private fun refreshWhenReady() {
+        if (!isVisible || !network.hasNetwork() || userStore.completedProfileSession.value == null) return
+        if (ownerId != userStore.currentUser.value?.id) return
+        if (feedJob?.isActive == true) {
+            realtimeRefreshRequested = true
+            return
+        }
+        refresh()
+    }
+
+    fun savePreview(photo: Moment, bitmap: Bitmap) {
+        val version = userStore.sessionVersion.value
+        viewModelScope.launch {
+            if (userStore.sessionVersion.value != version) return@launch
+            val preview = moments.saveMomentPreview(photo, bitmap) ?: return@launch
+            if (userStore.sessionVersion.value != version) return@launch
+            _state.update { current ->
+                current.copy(items = current.items.map { item ->
+                    if (item.moment.id == photo.id && item.moment.imageUrl == photo.imageUrl) {
+                        item.copy(moment = item.moment.copy(preview = preview))
+                    } else {
+                        item
+                    }
+                })
             }
         }
     }
@@ -125,7 +170,7 @@ class FeedViewModel @Inject constructor(
 
     fun loadMore() {
         val current = _state.value
-        if (!current.hasMore || current.loadMoreError != null || current.error != null) return
+        if (!current.hasMore || current.isOffline || current.loadMoreError != null || current.error != null) return
         retryLoadMore()
     }
 
@@ -258,9 +303,9 @@ class FeedViewModel @Inject constructor(
 
         _state.update { current ->
             val newItems = page.data.map { FeedItem(moment = it) }
-            val items = when (load) {
-                FeedLoad.MORE -> current.items + newItems
-                FeedLoad.SYNC -> newItems + current.items
+            val items = when {
+                page.fromCache || load == FeedLoad.SYNC -> newItems + current.items
+                load == FeedLoad.MORE -> current.items + newItems
                 else -> newItems
             }
             val uniqueItems = withOwners(items.distinctBy { it.moment.id }, current.friends)
@@ -274,12 +319,13 @@ class FeedViewModel @Inject constructor(
                 items = uniqueItems,
                 visibleMomentId = visibleId,
                 pageVersion = if (load == FeedLoad.MORE) current.pageVersion else current.pageVersion + 1,
-                hasMore = if (keepLoadedPages) current.hasMore else page.hasMore,
+                hasMore = if (page.fromCache) false else if (keepLoadedPages) current.hasMore else page.hasMore,
                 isLoading = false,
                 isRefreshing = false,
                 isLoadingMore = false,
                 error = if (cursorInvalid && uniqueItems.isEmpty()) R.string.feed_pagination_error else null,
                 loadMoreError = if (cursorInvalid && uniqueItems.isNotEmpty()) R.string.feed_pagination_error else null,
+                isOffline = page.fromCache,
             )
         }
         savePosition()
@@ -398,6 +444,7 @@ class FeedViewModel @Inject constructor(
                 isLoadingMore = false,
                 error = if (load == FeedLoad.MORE) null else message,
                 loadMoreError = if (load == FeedLoad.MORE) message else null,
+                isOffline = exception?.reason == MomentError.NETWORK,
             )
         }
     }
@@ -434,6 +481,10 @@ class FeedViewModel @Inject constructor(
         savedState["feed_owner"] = null
         _state.value = FeedUiState(error = R.string.feed_session_error)
         savePosition()
+    }
+
+    override fun onCleared() {
+        networkWatch.close()
     }
 }
 

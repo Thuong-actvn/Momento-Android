@@ -1,5 +1,6 @@
 package com.example.momento.feature.moment.presentation.feed
 
+import android.graphics.Bitmap
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -86,6 +87,7 @@ data class FeedUiState(
     val sendingReactionId: String? = null,
     val sentReactions: Map<String, String> = emptyMap(),
     val message: FeedMessage? = null,
+    val isOffline: Boolean = false,
 ) {
     val currentMoment: Moment?
         get() = items.find { it.moment.id == visibleMomentId }?.moment ?: items.firstOrNull()?.moment
@@ -109,6 +111,7 @@ data class FeedActions(
     val onReplyChange: (photoId: String, draft: String) -> Unit = { _, _ -> },
     val onSendReply: (photoId: String) -> Unit = {},
     val onCheckReply: (photoId: String) -> Unit = {},
+    val onPreviewLoaded: (Moment, Bitmap) -> Unit = { _, _ -> },
 )
 
 @Composable
@@ -148,6 +151,7 @@ fun FeedScreen(
                             actions = actions,
                             reactionsEnabled = state.sendingReactionId == null,
                             sentReactions = state.sentReactions,
+                            isOffline = state.isOffline,
                         )
                     }
                 } else {
@@ -157,7 +161,7 @@ fun FeedScreen(
             if (state.items.isNotEmpty()) {
                 FeedPageStatus(state = state, actions = actions)
             }
-            if (state.friendsError != null) {
+            if (state.friendsError != null && !state.isOffline) {
                 MomentoRetryMessage(
                     message = stringResource(state.friendsError),
                     actionText = stringResource(

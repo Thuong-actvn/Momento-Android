@@ -1,5 +1,6 @@
 package com.example.momento.feature.moment.presentation.feed
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.example.momento.R
 import com.example.momento.feature.moment.domain.model.AudienceType
 import com.example.momento.feature.moment.domain.model.MomentOwner
@@ -63,6 +65,8 @@ fun MomentCard(
     sentEmoji: String? = null,
     reactionsVisible: Boolean = true,
     showOwner: Boolean = true,
+    isOffline: Boolean = false,
+    onImageLoaded: ((Bitmap) -> Unit)? = null,
 ) {
     val moment = item.moment
     val ownerName = feedOwnerName(item.owner)
@@ -73,6 +77,9 @@ fun MomentCard(
         FeedPhoto(
             momentId = moment.id,
             imageUrl = moment.imageUrl,
+            previewUrl = moment.preview?.toUri()?.toString().orEmpty(),
+            isOffline = isOffline,
+            onImageLoaded = if (moment.preview == null) onImageLoaded else null,
             contentDescription = if (showOwner) {
                 stringResource(R.string.feed_image_description, ownerName)
             } else {
@@ -125,19 +132,36 @@ private fun FeedPhoto(
     momentId: String,
     imageUrl: String,
     contentDescription: String,
+    previewUrl: String,
+    isOffline: Boolean,
+    onImageLoaded: ((Bitmap) -> Unit)?,
 ) {
     var retryCount by remember(imageUrl) { mutableIntStateOf(0) }
-    var status by remember(imageUrl, retryCount) { mutableStateOf(FeedPhotoStatus.LOADING) }
+    var usePreview by remember(imageUrl, retryCount) { mutableStateOf(false) }
+    val source = if (isOffline || usePreview) previewUrl else imageUrl
+    var status by remember(source, retryCount) {
+        val initial = if (source.isBlank()) FeedPhotoStatus.ERROR else FeedPhotoStatus.LOADING
+        mutableStateOf(initial)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // A new key recreates the image request when the user retries.
-        key(imageUrl, retryCount) {
-            MomentImage(
-                image = imageUrl,
-                contentDescription = contentDescription,
-                onSuccess = { status = FeedPhotoStatus.SUCCESS },
-                onError = { status = FeedPhotoStatus.ERROR },
-            )
+        if (source.isNotBlank()) {
+            key(source, retryCount) {
+                MomentImage(
+                    image = source,
+                    contentDescription = contentDescription,
+                    onSuccess = { status = FeedPhotoStatus.SUCCESS },
+                    onError = {
+                        if (!isOffline && !usePreview && previewUrl.isNotBlank()) {
+                            usePreview = true
+                        } else {
+                            status = FeedPhotoStatus.ERROR
+                        }
+                    },
+                    onImageLoaded = if (isOffline || usePreview) null else onImageLoaded,
+                )
+            }
         }
 
         when (status) {
@@ -156,15 +180,19 @@ private fun FeedPhoto(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = stringResource(R.string.feed_image_error),
+                        text = stringResource(
+                            if (isOffline) R.string.moment_photo_needs_network else R.string.feed_image_error,
+                        ),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    TextButton(
-                        onClick = { retryCount++ },
-                        modifier = Modifier.testTag("feed_image_retry_$momentId"),
-                    ) {
-                        Text(text = stringResource(R.string.feed_retry))
+                    if (!isOffline) {
+                        TextButton(
+                            onClick = { retryCount++ },
+                            modifier = Modifier.testTag("feed_image_retry_$momentId"),
+                        ) {
+                            Text(text = stringResource(R.string.feed_retry))
+                        }
                     }
                 }
             }

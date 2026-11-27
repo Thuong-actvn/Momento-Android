@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.example.momento.R
 import com.example.momento.feature.chat.presentation.reply.MomentReplyViewModel
 
@@ -69,6 +70,11 @@ fun FeedRouteContent(
     val replySentText = stringResource(R.string.chat_reply_sent)
     val openChatLabel = stringResource(R.string.chat_reply_open)
 
+    LifecycleResumeEffect(viewModel) {
+        viewModel.setVisible(true)
+        onPauseOrDispose { viewModel.setVisible(false) }
+    }
+
     LaunchedEffect(state.currentMoment, replyState.sessionVersion) {
         replyViewModel.selectMoment(state.currentMoment)
     }
@@ -119,6 +125,7 @@ fun FeedRouteContent(
                 onReplyChange = replyViewModel::onDraftChange,
                 onSendReply = replyViewModel::send,
                 onCheckReply = replyViewModel::checkDelivery,
+                onPreviewLoaded = viewModel::savePreview,
             ),
             avatarUrl = avatarUrl,
             onAvatarClick = onAvatarClick,

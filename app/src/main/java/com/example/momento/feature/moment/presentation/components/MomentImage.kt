@@ -1,5 +1,6 @@
 package com.example.momento.feature.moment.presentation.components
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -19,7 +20,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import coil3.request.crossfade
+import coil3.toBitmap
 
 const val MOMENT_IMAGE_ASPECT_RATIO = 4f / 5f
 
@@ -48,10 +51,14 @@ fun MomentImage(
     modifier: Modifier = Modifier,
     onSuccess: () -> Unit = {},
     onError: () -> Unit = {},
+    onImageLoaded: ((Bitmap) -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val request = remember(context, image) {
-        ImageRequest.Builder(context).data(image).crossfade(false).build()
+    val savePreview = onImageLoaded != null
+    val request = remember(context, image, savePreview) {
+        val builder = ImageRequest.Builder(context).data(image).crossfade(false)
+        if (savePreview) builder.allowHardware(false)
+        builder.build()
     }
     AsyncImage(
         model = request,
@@ -59,7 +66,10 @@ fun MomentImage(
         modifier = modifier.fillMaxSize(),
         alignment = Alignment.Center,
         contentScale = ContentScale.Crop,
-        onSuccess = { onSuccess() },
+        onSuccess = { state ->
+            onSuccess()
+            onImageLoaded?.invoke(state.result.image.toBitmap())
+        },
         onError = { onError() },
     )
 }
