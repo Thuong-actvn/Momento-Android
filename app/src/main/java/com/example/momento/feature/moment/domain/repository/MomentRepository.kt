@@ -5,6 +5,7 @@ import com.example.momento.feature.moment.domain.model.AudienceType
 import com.example.momento.feature.moment.domain.model.CursorPage
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.model.MomentReaction
+import com.example.momento.feature.moment.domain.model.MyJournalPhoto
 import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.JsonObject
@@ -25,6 +26,16 @@ interface MomentRepository {
     ): Result<CursorPage<Moment>>
 
     suspend fun getMyMoments(cursor: String? = null, limit: Int = 10): Result<CursorPage<Moment>>
+
+    val myJournalPhotos: Flow<List<MyJournalPhoto>>
+
+    suspend fun getCachedJournalPhotos(ownerId: String?): Result<List<Moment>>
+
+    /** Save the latest page to Room and return whether there are more pages. */
+    suspend fun refreshMyJournal(): Result<Boolean>
+
+    /** Save the page after the stored cursor and return whether there are more pages. */
+    suspend fun loadMoreMyJournal(): Result<Boolean>
 
     suspend fun saveMomentPreview(photo: Moment, bitmap: Bitmap): File?
 

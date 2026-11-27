@@ -3,6 +3,7 @@ package com.example.momento.feature.moment.presentation.journal
 import androidx.annotation.StringRes
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.model.MomentOwner
+import java.io.File
 
 sealed interface JournalFilter {
     data object All : JournalFilter
@@ -14,6 +15,7 @@ data class JournalItem(
     val moment: Moment,
     val owner: MomentOwner? = null,
     val isOwn: Boolean = false,
+    val preview: File? = null,
 )
 
 data class JournalSection(
@@ -35,6 +37,7 @@ data class JournalUiState(
     @param:StringRes val loadMoreError: Int? = null,
     val isLoadingFriends: Boolean = false,
     @param:StringRes val friendsError: Int? = null,
+    val isOffline: Boolean = false,
 )
 
 enum class JournalLoad {

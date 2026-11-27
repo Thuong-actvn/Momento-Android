@@ -15,21 +15,30 @@ object JournalStateMapper {
         load: JournalLoad,
         user: CurrentUser?,
     ): JournalUiState {
-        val error = if (result.hasInvalidCursor) {
-            R.string.journal_pagination_error
-        } else {
-            result.errors.firstOrNull()?.let(::photoError)
+        val oldItems = when {
+            load == JournalLoad.INITIAL -> emptyList()
+            load == JournalLoad.REFRESH && result.hasSuccessfulPage && !result.isOffline -> emptyList()
+            else -> current.items
         }
-
-        val oldItems = if (load == JournalLoad.MORE || load == JournalLoad.SYNC || !result.hasSuccessfulPage) {
-            current.items
-        } else {
-            emptyList()
+        val previousById = current.items.associateBy { it.moment.id }
+        val newItems = result.moments.map { moment ->
+            val previous = previousById[moment.id]
+            val preview = if (previous != null && previous.moment.imageUrl == moment.imageUrl) {
+                previous.preview ?: previous.moment.preview
+            } else {
+                null
+            }
+            JournalItem(moment = moment, preview = preview)
         }
-        val newItems = result.moments.map { JournalItem(moment = it) }
-        val combined = if (load == JournalLoad.SYNC) newItems + oldItems else oldItems + newItems
+        val combined = if (load == JournalLoad.REFRESH || load == JournalLoad.SYNC) {
+            newItems + oldItems
+        } else {
+            oldItems + newItems
+        }
         val items = combined.distinctBy { it.moment.id }
-        val refreshFailed = load == JournalLoad.REFRESH && !result.hasSuccessfulPage
+        val error = loadError(result, load, items.isEmpty())
+        val refreshFailed = load == JournalLoad.REFRESH &&
+            (!result.hasSuccessfulPage || error == R.string.journal_network_error)
         val fullError = items.isEmpty() || refreshFailed
 
         return current.copy(
@@ -40,7 +49,25 @@ object JournalStateMapper {
             hasMore = result.hasMore,
             error = if (fullError) error else null,
             loadMoreError = if (fullError) null else error,
+            isOffline = result.isOffline,
         )
+    }
+
+    private fun loadError(result: JournalPhotoResult, load: JournalLoad, isEmpty: Boolean): Int? {
+        if (result.hasInvalidCursor) return R.string.journal_pagination_error
+        if (!result.isOffline) return result.errors.firstOrNull()?.let(::photoError)
+
+        val otherError = result.errors.firstOrNull { error ->
+            (error as? MomentException)?.reason != MomentError.NETWORK
+        }
+        if (otherError != null) return photoError(otherError)
+
+        val userAskedForMore = load == JournalLoad.REFRESH || load == JournalLoad.MORE
+        return if (isEmpty || (userAskedForMore && !result.addedCachedPhotos)) {
+            R.string.journal_network_error
+        } else {
+            null
+        }
     }
 
     fun friendsLoaded(
@@ -90,7 +117,7 @@ object JournalStateMapper {
         }
     }
 
-    private fun photoError(error: Throwable): Int {
+    fun photoError(error: Throwable): Int {
         return when ((error as? MomentException)?.reason) {
             MomentError.NETWORK -> R.string.journal_network_error
             MomentError.SERVER -> R.string.journal_server_error

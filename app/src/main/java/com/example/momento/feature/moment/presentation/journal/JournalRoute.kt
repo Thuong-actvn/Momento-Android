@@ -41,6 +41,11 @@ fun JournalRouteContent(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val detail by detailViewModel.state.collectAsStateWithLifecycle()
 
+    LifecycleResumeEffect(viewModel) {
+        viewModel.setVisible(true)
+        onPauseOrDispose { viewModel.setVisible(false) }
+    }
+
     LaunchedEffect(detail.deletedMomentId) {
         val deletedId = detail.deletedMomentId ?: return@LaunchedEffect
         viewModel.removeMoment(deletedId)
@@ -57,6 +62,7 @@ fun JournalRouteContent(
         onRetryFriends = viewModel::retryFriends,
         onMomentClick = detailViewModel::open,
         onNotificationsClick = onNotificationsClick,
+        onPreviewLoaded = viewModel::savePreview,
     )
 
     if (detail.item != null) {

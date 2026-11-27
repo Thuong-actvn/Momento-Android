@@ -1,5 +1,6 @@
 package com.example.momento.feature.moment.presentation.journal
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.example.momento.R
 import com.example.momento.feature.moment.presentation.components.MOMENT_IMAGE_ASPECT_RATIO
 import com.example.momento.feature.moment.presentation.components.MomentImage
@@ -46,7 +48,9 @@ import java.time.format.DateTimeFormatter
 fun JournalCard(
     item: JournalItem,
     modifier: Modifier = Modifier,
+    isOffline: Boolean = false,
     onClick: () -> Unit = {},
+    onImageLoaded: ((Bitmap) -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(20.dp)
     val ownerName = if (item.isOwn) {
@@ -66,8 +70,15 @@ fun JournalCard(
             .testTag("journal_card_${item.moment.id}"),
     ) {
         JournalPhoto(
-            imageUrl = item.moment.imageUrl,
+            imageUrl = if (isOffline) journalImageSource(item, true) else item.moment.imageUrl,
             contentDescription = stringResource(R.string.journal_image_description, ownerName),
+            isOffline = isOffline,
+            fallbackUrl = journalImageSource(item, true),
+            onImageLoaded = if (isOffline || item.moment.preview != null || item.preview != null) {
+                null
+            } else {
+                onImageLoaded
+            },
         )
 
         Box(
@@ -104,20 +115,35 @@ fun JournalCard(
 }
 
 @Composable
-fun JournalPhoto(imageUrl: String, contentDescription: String) {
+fun JournalPhoto(
+    imageUrl: String,
+    contentDescription: String,
+    isOffline: Boolean = false,
+    fallbackUrl: String = "",
+    onImageLoaded: ((Bitmap) -> Unit)? = null,
+) {
     var retryCount by remember(imageUrl) { mutableIntStateOf(0) }
+    var useFallback by remember(imageUrl, retryCount) { mutableStateOf(false) }
+    val source = if (useFallback) fallbackUrl else imageUrl
     var hasError by remember(imageUrl, retryCount) {
         mutableStateOf(imageUrl.isBlank())
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (imageUrl.isNotBlank()) {
-            key(imageUrl, retryCount) {
+        if (source.isNotBlank()) {
+            key(source, retryCount) {
                 MomentImage(
-                    image = imageUrl,
+                    image = source,
                     contentDescription = contentDescription,
                     onSuccess = { hasError = false },
-                    onError = { hasError = true },
+                    onError = {
+                        if (!useFallback && fallbackUrl.isNotBlank() && fallbackUrl != imageUrl) {
+                            useFallback = true
+                        } else {
+                            hasError = true
+                        }
+                    },
+                    onImageLoaded = if (useFallback) null else onImageLoaded,
                 )
             }
         }
@@ -131,19 +157,29 @@ fun JournalPhoto(imageUrl: String, contentDescription: String) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = stringResource(R.string.journal_image_error),
+                    text = stringResource(
+                        if (isOffline) R.string.moment_photo_needs_network else R.string.journal_image_error,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
                 )
-                TextButton(onClick = { retryCount++ }) {
-                    Text(
-                        text = stringResource(R.string.journal_retry),
-                        style = MaterialTheme.typography.labelSmall,
-                    )
+                if (!isOffline) {
+                    TextButton(onClick = { retryCount++ }) {
+                        Text(
+                            text = stringResource(R.string.journal_retry),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+fun journalImageSource(item: JournalItem, isOffline: Boolean): String {
+    val preview = item.preview ?: item.moment.preview
+    if (preview != null) return preview.toUri().toString()
+    return if (isOffline) "" else item.moment.imageUrl
 }
 
 @Composable

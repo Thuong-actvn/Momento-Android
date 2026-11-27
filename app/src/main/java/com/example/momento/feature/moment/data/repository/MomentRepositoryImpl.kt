@@ -19,6 +19,7 @@ import com.example.momento.feature.moment.domain.model.AudienceType
 import com.example.momento.feature.moment.domain.model.CursorPage
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.model.MomentReaction
+import com.example.momento.feature.moment.domain.model.MyJournalPhoto
 import com.example.momento.feature.moment.domain.repository.MomentRepository
 import dagger.Lazy
 import java.io.File
@@ -27,6 +28,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -47,6 +50,15 @@ class MomentRepositoryImpl @Inject constructor(
     private val journal: Lazy<MomentCacheStore>,
 ) : MomentRepository {
     override val cachedMoments = memory.moments
+    override val myJournalPhotos get() = journal.get().photos
+
+    override suspend fun getCachedJournalPhotos(ownerId: String?): Result<List<Moment>> = requestResult { session ->
+        journal.get().getCachedPhotos(session, ownerId, includeOwn = true)
+    }
+
+    private val journalPageLock = Mutex()
+    private var journalPagingGeneration: Long? = null
+    private val usedJournalCursors = mutableSetOf<String>()
 
     override suspend fun getMoment(photoId: String): Result<Moment> = requestResult { session ->
         val id = validateId(photoId)
@@ -149,6 +161,52 @@ class MomentRepositoryImpl @Inject constructor(
     private suspend fun cacheSafely(write: suspend () -> Unit) {
         suspendRunCatching { write() }.onFailure { error ->
             Log.w("MomentoJournal", "Unable to update the moment cache", error)
+        }
+    }
+
+    override suspend fun refreshMyJournal(): Result<Boolean> = syncMyJournal(refresh = true)
+
+    override suspend fun loadMoreMyJournal(): Result<Boolean> = syncMyJournal(refresh = false)
+
+    private suspend fun syncMyJournal(refresh: Boolean): Result<Boolean> = requestResult { session ->
+        journalPageLock.withLock {
+            checkSession(session)
+            if (journalPagingGeneration != session.generation) {
+                journalPagingGeneration = session.generation
+                usedJournalCursors.clear()
+            }
+
+            val store = journal.get()
+            val cursor = if (refresh) {
+                null
+            } else {
+                val state = store.getSyncState(session)
+                if (state?.hasMore != true) return@withLock false
+                state.nextCursor ?: return@withLock false
+            }
+
+            checkSession(session)
+            val response = fetchMyMoments(cursor)
+            val page = decodeResponse {
+                require(response.data.all { it.ownerId == session.userId }) {
+                    "The personal photo page contains another account's photos"
+                }
+                if (response.hasMore) {
+                    val next = response.nextCursor
+                    require(!next.isNullOrBlank() && next != cursor && response.data.isNotEmpty()) {
+                        "Invalid next cursor for personal photos"
+                    }
+                    require(refresh || next !in usedJournalCursors) { "Personal photo cursor repeated" }
+                }
+                val photos = response.data.map { photo -> photo.copy(id = validateId(photo.id)) }
+                response.copy(data = photos)
+            }
+
+            store.savePage(session, page)
+            if (refresh) usedJournalCursors.clear()
+            if (cursor != null) usedJournalCursors.add(cursor)
+            memory.merge(session, page.data)
+            page.hasMore
         }
     }
 

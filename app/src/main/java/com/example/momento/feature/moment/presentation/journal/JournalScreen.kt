@@ -1,5 +1,6 @@
 package com.example.momento.feature.moment.presentation.journal
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ fun JournalScreen(
     onRetryFriends: () -> Unit = {},
     onMomentClick: (JournalItem) -> Unit = {},
     onNotificationsClick: () -> Unit = {},
+    onPreviewLoaded: (JournalItem, Bitmap) -> Unit = { _, _ -> },
 ) {
     val sections = journalSections(state.items)
 
@@ -54,7 +56,7 @@ fun JournalScreen(
                 selectedFilter = state.filter,
                 onSelect = onFilterSelected,
             )
-            if (state.friendsError != null) {
+            if (state.filter != JournalFilter.OnlyMe && state.friendsError != null && !state.isOffline) {
                 MomentoRetryMessage(
                     message = stringResource(state.friendsError),
                     actionText = stringResource(R.string.journal_retry),
@@ -93,6 +95,7 @@ fun JournalScreen(
                             onRetry = onRetry,
                             onLoadMore = onLoadMore,
                             onMomentClick = onMomentClick,
+                            onPreviewLoaded = onPreviewLoaded,
                         )
                     }
                 } else {

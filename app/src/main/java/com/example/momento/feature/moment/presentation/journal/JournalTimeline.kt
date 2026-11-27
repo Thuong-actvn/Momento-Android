@@ -1,5 +1,6 @@
 package com.example.momento.feature.moment.presentation.journal
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -46,6 +47,7 @@ fun JournalTimeline(
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onMomentClick: (JournalItem) -> Unit = {},
+    onPreviewLoaded: (JournalItem, Bitmap) -> Unit = { _, _ -> },
 ) {
     val listState = rememberLazyListState()
     val canLoadMore = state.hasMore && !state.isLoadingMore && !state.isRefreshing &&
@@ -54,6 +56,7 @@ fun JournalTimeline(
         listState = listState,
         orientation = Orientation.Vertical,
         enabled = canLoadMore,
+        onlyAtEnd = state.isOffline,
         onLoadMore = onLoadMore,
     )
 
@@ -77,9 +80,11 @@ fun JournalTimeline(
                 )
                 JournalMomentRow(
                     section = section,
+                    isOffline = state.isOffline,
                     canLoadMore = canLoadMore,
                     onLoadMore = onLoadMore,
                     onMomentClick = onMomentClick,
+                    onPreviewLoaded = onPreviewLoaded,
                 )
             }
         }
@@ -121,15 +126,18 @@ private fun JournalPageStatus(
 @Composable
 private fun JournalMomentRow(
     section: JournalSection,
+    isOffline: Boolean,
     canLoadMore: Boolean,
     onLoadMore: () -> Unit,
     onMomentClick: (JournalItem) -> Unit,
+    onPreviewLoaded: (JournalItem, Bitmap) -> Unit,
 ) {
     val rowState = rememberLazyListState()
     val paginationConnection = rememberJournalPaginationConnection(
         listState = rowState,
         orientation = Orientation.Horizontal,
         enabled = canLoadMore,
+        onlyAtEnd = isOffline,
         onLoadMore = onLoadMore,
     )
     val flingBehavior = rememberSnapFlingBehavior(
@@ -170,7 +178,9 @@ private fun JournalMomentRow(
             ) { index, item ->
                 JournalCard(
                     item = item,
+                    isOffline = isOffline,
                     onClick = { onMomentClick(item) },
+                    onImageLoaded = { bitmap -> onPreviewLoaded(item, bitmap) },
                     modifier = Modifier
                         .width(cardWidth)
                         .graphicsLayer {
@@ -190,9 +200,11 @@ private fun rememberJournalPaginationConnection(
     listState: LazyListState,
     orientation: Orientation,
     enabled: Boolean,
+    onlyAtEnd: Boolean,
     onLoadMore: () -> Unit,
 ): NestedScrollConnection {
     val canLoadMore by rememberUpdatedState(enabled)
+    val waitForEnd by rememberUpdatedState(onlyAtEnd)
     val loadMore by rememberUpdatedState(onLoadMore)
 
     return remember(listState, orientation) {
@@ -210,6 +222,9 @@ private fun rememberJournalPaginationConnection(
 
                 // Only load after a forward scroll, including a swipe on a short list.
                 if (!canLoadMore || scroll >= 0f) return Offset.Zero
+                if (waitForEnd && (listState.canScrollForward || source != NestedScrollSource.UserInput)) {
+                    return Offset.Zero
+                }
 
                 val layout = listState.layoutInfo
                 val lastVisibleIndex = layout.visibleItemsInfo.lastOrNull()?.index

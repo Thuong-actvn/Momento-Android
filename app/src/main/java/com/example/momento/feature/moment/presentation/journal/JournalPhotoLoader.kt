@@ -1,6 +1,8 @@
 package com.example.momento.feature.moment.presentation.journal
 
 import com.example.momento.feature.moment.data.realtime.loadMomentUpdates
+import com.example.momento.feature.moment.data.remote.MomentError
+import com.example.momento.feature.moment.data.remote.MomentException
 import com.example.momento.feature.moment.domain.model.CursorPage
 import com.example.momento.feature.moment.domain.model.Moment
 import com.example.momento.feature.moment.domain.repository.MomentRepository
@@ -14,9 +16,6 @@ import kotlinx.coroutines.ensureActive
 /** Loads Journal photos and keeps a separate cursor for each API endpoint. */
 class JournalPhotoLoader(private val moments: MomentRepository) {
     private var pages = emptyMap<JournalSource, JournalPage>()
-
-    val hasMore: Boolean
-        get() = pages.values.any { it.hasMore }
 
     fun reset() {
         pages = emptyMap()
@@ -56,10 +55,13 @@ class JournalPhotoLoader(private val moments: MomentRepository) {
         val successfulPages = results.filter { it.result.isSuccess }
         val newMoments = mutableListOf<Moment>()
         var hasInvalidCursor = false
+        val isOffline = successfulPages.any { it.result.getOrThrow().fromCache } ||
+            errors.any { (it as? MomentException)?.reason == MomentError.NETWORK }
 
         for (pageResult in successfulPages) {
             val page = pageResult.result.getOrThrow()
             newMoments.addAll(page.data)
+            if (page.fromCache) continue
 
             val tracker = requestPages.getValue(pageResult.source)
             if (load == JournalLoad.SYNC && tracker.latestMomentId != null) {
@@ -79,8 +81,9 @@ class JournalPhotoLoader(private val moments: MomentRepository) {
             moments = newMoments,
             errors = errors,
             hasSuccessfulPage = successfulPages.isNotEmpty(),
-            hasMore = hasMore,
+            hasMore = pages.values.any { it.hasMore },
             hasInvalidCursor = hasInvalidCursor,
+            isOffline = isOffline,
         )
     }
 
@@ -115,6 +118,8 @@ data class JournalPhotoResult(
     val hasSuccessfulPage: Boolean,
     val hasMore: Boolean,
     val hasInvalidCursor: Boolean,
+    val isOffline: Boolean = false,
+    val addedCachedPhotos: Boolean = false,
 )
 
 private enum class JournalSource {
