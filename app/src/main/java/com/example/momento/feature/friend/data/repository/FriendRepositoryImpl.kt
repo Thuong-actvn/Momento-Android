@@ -1,6 +1,8 @@
 package com.example.momento.feature.friend.data.repository
 
+import android.util.Log
 import com.example.momento.core.common.suspendRunCatching
+import com.example.momento.core.realtime.RealtimeNetworkMonitor
 import com.example.momento.core.user.data.CurrentUserStore
 import com.example.momento.core.user.data.remote.dto.toDomain
 import com.example.momento.core.user.domain.model.PublicProfile
@@ -14,17 +16,38 @@ import com.example.momento.feature.friend.data.remote.toFriendException
 import com.example.momento.feature.friend.domain.model.FriendRequest
 import com.example.momento.feature.friend.domain.model.FriendRequestAction
 import com.example.momento.feature.friend.domain.repository.FriendRepository
+import com.example.momento.feature.moment.data.local.MomentCacheStore
+import dagger.Lazy
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 @Singleton
 class FriendRepositoryImpl @Inject constructor(
     private val api: FriendApi,
     private val userStore: CurrentUserStore,
+    private val network: RealtimeNetworkMonitor,
+    private val moments: Lazy<MomentCacheStore>,
 ) : FriendRepository {
-    override suspend fun getFriends(): Result<List<PublicProfile>> = requestResult {
-        api.getFriends().requireData().map { it.toDomain() }
+    override suspend fun getFriends(): Result<List<PublicProfile>> = requestResult { session ->
+        try {
+            if (!network.hasNetwork() || userStore.isUsingCachedSession()) {
+                throw FriendException(FriendError.NETWORK)
+            }
+            val friends = api.getFriends().requireData().map { it.toDomain() }
+            cacheFriends { moments.get().saveFriends(session, friends) }
+            friends
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            val failure = error.toFriendException()
+            if (failure.reason != FriendError.NETWORK) throw failure
+            val cached = moments.get().getFriends(session)
+            if (cached.isEmpty()) throw failure
+            cached
+        }
     }
 
     override suspend fun getPendingRequests(): Result<List<FriendRequest>> = requestResult {
@@ -54,18 +77,27 @@ class FriendRepositoryImpl @Inject constructor(
         api.respondRequest(requestId, RespondFriendRequest(action.name))
     }
 
-    override suspend fun removeFriend(friendUserId: String): Result<Unit> = requestResult {
+    override suspend fun removeFriend(friendUserId: String): Result<Unit> = requestResult { session ->
         api.removeFriend(friendUserId)
+        withContext(NonCancellable) {
+            cacheFriends { moments.get().removeFriend(session, friendUserId) }
+        }
     }
 
-    private suspend fun <T> requestResult(block: suspend () -> T): Result<T> = suspendRunCatching {
+    private suspend fun cacheFriends(write: suspend () -> Unit) {
+        suspendRunCatching { write() }.onFailure { error ->
+            Log.w("MomentoJournal", "Unable to update the cached friends", error)
+        }
+    }
+
+    private suspend fun <T> requestResult(block: suspend (CurrentUserStore.Session) -> T): Result<T> = suspendRunCatching {
         val session = try {
             userStore.requireSession()
         } catch (error: IllegalStateException) {
             throw FriendException(FriendError.UNAUTHENTICATED, cause = error)
         }
         try {
-            block().also { checkSession(session) }
+            block(session).also { checkSession(session) }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
